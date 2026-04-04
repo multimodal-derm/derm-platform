@@ -1,4 +1,4 @@
-.PHONY: up down build gateway inference logs clean
+.PHONY: up down build gateway inference frontend logs clean
 
 # Start all services
 up:
@@ -23,6 +23,10 @@ gateway:
 # Run inference locally (no Docker)
 inference:
 	cd inference && uvicorn main:app --port 8081 --reload
+
+# Run frontend locally (no Docker)
+frontend:
+	cd frontend && npm run dev
 
 # View logs
 logs:

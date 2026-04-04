@@ -24,11 +24,12 @@ services:
       - ./model:/app/model:ro
     restart: unless-stopped
 
-  # frontend:
-  #   build: ./frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://localhost:8080
-  #   depends_on:
-  #     - gateway
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - gateway
+    restart: unless-stopped

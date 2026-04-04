@@ -1,0 +1,46 @@
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Frontend (Next.js / Node) ─────────────────────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/.next 2/
+frontend/out/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ── Gateway (Go) ──────────────────────────────────────────────────────────────
+gateway/bin/
+gateway/*.exe
+gateway/*.out
+
+# ── Inference (Python) ────────────────────────────────────────────────────────
+inference/__pycache__/
+inference/*.pyc
+inference/*.pyo
+inference/.venv/
+inference/venv/
+inference/.env
+
+# ── Model weights (large binary files) ───────────────────────────────────────
+model/*.pt
+model/*.pth
+model/*.onnx
+model/*.bin
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+*.log
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Kiro specs (remove this line to track specs in git) ──────────────────────
+.kiro/
