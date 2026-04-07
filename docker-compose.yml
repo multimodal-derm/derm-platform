@@ -20,6 +20,7 @@ services:
     environment:
       - CHECKPOINT_PATH=/app/model/best.pt
       - DEVICE=cpu
+      - HF_TOKEN=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
     volumes:
       - ./model:/app/model:ro
     restart: unless-stopped

@@ -18,7 +18,7 @@ import { ClinicalMetadata, PredictionResponse } from "@/lib/types";
 
 const MedicalLoadingScreen = dynamic(
   () => import("@/components/medical-loading-screen"),
-  { ssr: false }
+  { ssr: false },
 );
 
 import {
@@ -64,6 +64,9 @@ const FITZPATRICK_LABELS: Record<string, string> = {
   VI: "Type VI — Very dark brown to black",
 };
 
+const CONFIDENCE_THRESHOLD = 0.55;
+const ENTROPY_THRESHOLD = 1.5;
+
 export default function AnalyzePage() {
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -92,6 +95,33 @@ export default function AnalyzePage() {
 
     try {
       const res = await predict(image, metadata);
+
+      // Reject mock results
+      if (res.model_version?.includes("mock")) {
+        setError(
+          "The inference service is running in mock mode — predictions are not real. " +
+            "Ensure best.pt is loaded and restart the inference service.",
+        );
+        setStep("input");
+        return;
+      }
+
+      // Compute entropy — high entropy means model is uncertain (likely non-derm image)
+      const probs = Object.values(res.probabilities);
+      const entropy = -probs.reduce((sum, p) => {
+        if (p > 0) sum += p * Math.log2(p);
+        return sum;
+      }, 0);
+
+      if (res.confidence < CONFIDENCE_THRESHOLD || entropy > ENTROPY_THRESHOLD) {
+        setError(
+          "The model could not confidently classify this image as a skin lesion. " +
+            "This may not be a dermoscopic image. Please upload a close-up photo of a skin lesion.",
+        );
+        setStep("input");
+        return;
+      }
+
       setResult(res);
       setStep("results");
     } catch (err) {
@@ -118,7 +148,6 @@ export default function AnalyzePage() {
     metadata.elevation && "Elevated",
   ].filter(Boolean);
 
-  // Step index for progress indicator
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
   return (
@@ -199,7 +228,9 @@ export default function AnalyzePage() {
           >
             <p className="text-sm text-red-700 font-medium">{error}</p>
             <p className="text-xs text-red-500 mt-1">
-              Make sure the gateway and inference services are running.
+              {error.includes("mock")
+                ? "Check that best.pt is in the model/ directory and restart the inference service."
+                : "Please try again with a dermoscopic skin lesion photograph."}
             </p>
           </div>
         )}
@@ -237,6 +268,10 @@ export default function AnalyzePage() {
                     setPreview(null);
                   }}
                 />
+                <p className="text-xs text-clinical-muted mt-3">
+                  Only dermoscopic or clinical skin lesion photographs are
+                  supported. Non-medical images will be rejected.
+                </p>
               </CardContent>
             </Card>
 

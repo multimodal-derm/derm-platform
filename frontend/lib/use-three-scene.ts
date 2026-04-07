@@ -2,44 +2,34 @@ import { useEffect } from "react";
 import * as THREE from "three";
 
 /**
- * useThreeScene
- *
- * Encapsulates all Three.js setup, animation loop, and cleanup for the
- * medical loading screen. Only runs client-side (guaranteed by ssr:false
- * on the parent MedicalLoadingScreen component).
- *
- * @param canvasRef - ref to the <canvas> element to render into
- * @param reducedMotion - when true, animation speeds are reduced by 80%
+ * Dermoscope-themed loading animation:
+ * - Central scanning reticle (crosshair + pulsing lens ring)
+ * - Orbiting cell-like particles
+ * - Scanning sweep arc
  */
 export function useThreeScene(
   canvasRef: React.RefObject<HTMLCanvasElement>,
-  reducedMotion: boolean
+  reducedMotion: boolean,
 ): void {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // ── Renderer ──────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
     });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
-    // ── Scene ─────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
 
-    // ── Camera ────────────────────────────────────────────────────────────
-    // PerspectiveCamera framed to show the DNA helix (~4 units tall) and
-    // scan ring (radius 1.8) comfortably within the viewport.
     const aspect = canvas.clientWidth / canvas.clientHeight || 1;
-    const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100);
-    camera.position.set(0, 0, 6);
+    const camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
+    camera.position.set(0, 0, 8);
     camera.lookAt(0, 0, 0);
 
-    // ── ResizeObserver — keep renderer in sync with canvas size ───────────
     const resizeObserver = new ResizeObserver(() => {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
@@ -49,158 +39,236 @@ export function useThreeScene(
     });
     resizeObserver.observe(canvas);
 
-    // ── DNA Helix (task 2.2) ──────────────────────────────────────────────
-    const N_HELIX_SPHERES = 20;
-    const helixRadius = 0.6;
-    const yScale = 0.3;
-    const helixGroup = new THREE.Group();
-
-    const mat1 = new THREE.MeshBasicMaterial({ color: "#00d4ff" });
-    const mat2 = new THREE.MeshBasicMaterial({ color: "#00b4a0" });
-    const rungMat = new THREE.MeshBasicMaterial({ color: "#00d4ff", transparent: true, opacity: 0.5 });
-
-    const strand1Points: THREE.Vector3[] = [];
-    const strand2Points: THREE.Vector3[] = [];
-
-    for (let i = 0; i < N_HELIX_SPHERES; i++) {
-      const t = (i / (N_HELIX_SPHERES - 1)) * Math.PI * 4;
-      const y = t * yScale - Math.PI * 2 * yScale; // center vertically
-
-      const x1 = helixRadius * Math.cos(t);
-      const z1 = helixRadius * Math.sin(t);
-      const x2 = helixRadius * Math.cos(t + Math.PI);
-      const z2 = helixRadius * Math.sin(t + Math.PI);
-
-      strand1Points.push(new THREE.Vector3(x1, y, z1));
-      strand2Points.push(new THREE.Vector3(x2, y, z2));
-
-      const sphereGeo = new THREE.SphereGeometry(0.08, 8, 8);
-
-      const sphere1 = new THREE.Mesh(sphereGeo, mat1);
-      sphere1.position.set(x1, y, z1);
-      helixGroup.add(sphere1);
-
-      const sphere2 = new THREE.Mesh(sphereGeo, mat2);
-      sphere2.position.set(x2, y, z2);
-      helixGroup.add(sphere2);
-    }
-
-    // Connecting rungs between paired strand points
-    for (let i = 0; i < N_HELIX_SPHERES - 1; i++) {
-      const p1 = strand1Points[i];
-      const p2 = strand2Points[i];
-
-      const dir = new THREE.Vector3().subVectors(p2, p1);
-      const length = dir.length();
-      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-
-      const rungGeo = new THREE.CylinderGeometry(0.02, 0.02, length, 6);
-      const rung = new THREE.Mesh(rungGeo, rungMat);
-      rung.position.copy(mid);
-      rung.quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        dir.normalize()
-      );
-      helixGroup.add(rung);
-    }
-
-    scene.add(helixGroup);
-
-    // ── Scan Ring (task 2.4) ──────────────────────────────────────────────
-    const scanRingGeo = new THREE.TorusGeometry(1.8, 0.04, 16, 64);
-    const scanRingMat = new THREE.MeshBasicMaterial({
-      color: "#00ffff",
+    // ── Dermoscope lens ring ─────────────────────────────────────────────
+    const lensRingGeo = new THREE.TorusGeometry(2.2, 0.03, 16, 128);
+    const lensRingMat = new THREE.MeshBasicMaterial({
+      color: "#00d4ff",
       transparent: true,
+      opacity: 0.6,
     });
-    const scanRing = new THREE.Mesh(scanRingGeo, scanRingMat);
-    scene.add(scanRing);
+    const lensRing = new THREE.Mesh(lensRingGeo, lensRingMat);
+    scene.add(lensRing);
 
-    // ── Particle Field (task 2.5) ─────────────────────────────────────────
-    const N_PARTICLES = 300;
-    const PARTICLE_SPHERE_RADIUS = 3;
+    // Inner ring
+    const innerRingGeo = new THREE.TorusGeometry(1.6, 0.015, 16, 128);
+    const innerRingMat = new THREE.MeshBasicMaterial({
+      color: "#00d4ff",
+      transparent: true,
+      opacity: 0.25,
+    });
+    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+    scene.add(innerRing);
 
-    const particlePositions = new Float32Array(N_PARTICLES * 3);
-    const particleVelocities = new Float32Array(N_PARTICLES * 3);
+    // ── Crosshair lines ─────────────────────────────────────────────────
+    const crosshairMat = new THREE.LineBasicMaterial({
+      color: "#00d4ff",
+      transparent: true,
+      opacity: 0.2,
+    });
 
-    // Rejection sampling: generate points uniformly inside a sphere
-    let filled = 0;
-    while (filled < N_PARTICLES) {
-      const x = (Math.random() * 2 - 1) * PARTICLE_SPHERE_RADIUS;
-      const y = (Math.random() * 2 - 1) * PARTICLE_SPHERE_RADIUS;
-      const z = (Math.random() * 2 - 1) * PARTICLE_SPHERE_RADIUS;
-      if (x * x + y * y + z * z <= PARTICLE_SPHERE_RADIUS * PARTICLE_SPHERE_RADIUS) {
-        particlePositions[filled * 3]     = x;
-        particlePositions[filled * 3 + 1] = y;
-        particlePositions[filled * 3 + 2] = z;
-        // Small random drift velocity for each particle
-        particleVelocities[filled * 3]     = (Math.random() - 0.5) * 0.004;
-        particleVelocities[filled * 3 + 1] = (Math.random() - 0.5) * 0.004;
-        particleVelocities[filled * 3 + 2] = (Math.random() - 0.5) * 0.004;
-        filled++;
-      }
+    const makeLineSegment = (points: THREE.Vector3[]) => {
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geo, crosshairMat);
+      scene.add(line);
+      return line;
+    };
+
+    makeLineSegment([
+      new THREE.Vector3(-2.2, 0, 0),
+      new THREE.Vector3(-0.4, 0, 0),
+    ]);
+    makeLineSegment([
+      new THREE.Vector3(0.4, 0, 0),
+      new THREE.Vector3(2.2, 0, 0),
+    ]);
+    makeLineSegment([
+      new THREE.Vector3(0, -2.2, 0),
+      new THREE.Vector3(0, -0.4, 0),
+    ]);
+    makeLineSegment([
+      new THREE.Vector3(0, 0.4, 0),
+      new THREE.Vector3(0, 2.2, 0),
+    ]);
+
+    // ── Tick marks on lens ring ──────────────────────────────────────────
+    const tickMat = new THREE.LineBasicMaterial({
+      color: "#00d4ff",
+      transparent: true,
+      opacity: 0.3,
+    });
+    for (let i = 0; i < 36; i++) {
+      const angle = (i / 36) * Math.PI * 2;
+      const innerR = i % 9 === 0 ? 2.0 : 2.1;
+      const outerR = 2.35;
+      const pts = [
+        new THREE.Vector3(
+          Math.cos(angle) * innerR,
+          Math.sin(angle) * innerR,
+          0,
+        ),
+        new THREE.Vector3(
+          Math.cos(angle) * outerR,
+          Math.sin(angle) * outerR,
+          0,
+        ),
+      ];
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      scene.add(new THREE.Line(geo, tickMat));
     }
 
-    const particleGeo = new THREE.BufferGeometry();
-    particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+    // ── Scanning sweep arc ──────────────────────────────────────────────
+    const sweepCurve = new THREE.ArcCurve(0, 0, 2.2, 0, Math.PI * 0.4, false);
+    const sweepPts = sweepCurve.getPoints(32);
+    const sweepGeo = new THREE.BufferGeometry().setFromPoints(
+      sweepPts.map((p) => new THREE.Vector3(p.x, p.y, 0)),
+    );
+    const sweepMat = new THREE.LineBasicMaterial({
+      color: "#00ffcc",
+      transparent: true,
+      opacity: 0.7,
+    });
+    const sweepLine = new THREE.Line(sweepGeo, sweepMat);
+    scene.add(sweepLine);
 
-    const particleMat = new THREE.PointsMaterial({
-      size: 0.04,
+    // ── Cell-like particles ─────────────────────────────────────────────
+    const N_CELLS = 60;
+    const cellGroup = new THREE.Group();
+
+    interface CellDatum {
+      mesh: THREE.Mesh;
+      angle: number;
+      radius: number;
+      speed: number;
+      yOffset: number;
+    }
+
+    const cellData: CellDatum[] = [];
+
+    for (let i = 0; i < N_CELLS; i++) {
+      const radius = 0.5 + Math.random() * 1.8;
+      const angle = Math.random() * Math.PI * 2;
+      const size = 0.03 + Math.random() * 0.06;
+
+      const geo = new THREE.SphereGeometry(size, 8, 8);
+      const colors = ["#00d4ff", "#00b4a0", "#4a9eff"];
+      const mat = new THREE.MeshBasicMaterial({
+        color: colors[i % 3],
+        transparent: true,
+        opacity: 0.15 + Math.random() * 0.35,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+
+      mesh.position.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius,
+        (Math.random() - 0.5) * 1.5,
+      );
+
+      cellGroup.add(mesh);
+      cellData.push({
+        mesh,
+        angle,
+        radius,
+        speed:
+          (0.0003 + Math.random() * 0.001) *
+          (Math.random() > 0.5 ? 1 : -1),
+        yOffset: Math.random() * Math.PI * 2,
+      });
+    }
+
+    scene.add(cellGroup);
+
+    // ── Outer ambient particles ─────────────────────────────────────────
+    const N_AMBIENT = 150;
+    const ambientPositions = new Float32Array(N_AMBIENT * 3);
+    const ambientVelocities = new Float32Array(N_AMBIENT * 3);
+
+    for (let i = 0; i < N_AMBIENT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 2.5 + Math.random() * 3;
+      ambientPositions[i * 3] = Math.cos(angle) * r;
+      ambientPositions[i * 3 + 1] = Math.sin(angle) * r;
+      ambientPositions[i * 3 + 2] = (Math.random() - 0.5) * 3;
+      ambientVelocities[i * 3] = (Math.random() - 0.5) * 0.002;
+      ambientVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.002;
+      ambientVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.001;
+    }
+
+    const ambientGeo = new THREE.BufferGeometry();
+    ambientGeo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(ambientPositions, 3),
+    );
+    const ambientMat = new THREE.PointsMaterial({
+      size: 0.025,
       color: "#ffffff",
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.2,
     });
+    scene.add(new THREE.Points(ambientGeo, ambientMat));
 
-    const particles = new THREE.Points(particleGeo, particleMat);
-    scene.add(particles);
-
-    // ── Animation loop (task 2.6) ─────────────────────────────────────────
-    const rotationSpeed = reducedMotion ? 0.001 : 0.005;
-    const SCAN_PERIOD_MS = 3000;
+    // ── Animation loop ──────────────────────────────────────────────────
+    const speed = reducedMotion ? 0.2 : 1.0;
     let frameId: number;
 
     const animate = (timestamp: number) => {
       frameId = requestAnimationFrame(animate);
 
-      // Rotate helix around Y-axis
-      helixGroup.rotation.y += rotationSpeed;
+      // Sweep arc rotates around the lens
+      sweepLine.rotation.z -= 0.008 * speed;
 
-      // Pulse scan ring scale and opacity on a sine wave (~3s period)
-      const phase = (timestamp % SCAN_PERIOD_MS) / SCAN_PERIOD_MS; // 0..1
-      const sine = Math.sin(phase * Math.PI * 2);                   // -1..1
-      const scale = 1.0 + sine * 0.1;                               // 0.9..1.1
-      scanRing.scale.setScalar(scale);
-      scanRingMat.opacity = 0.6 + sine * 0.3;                       // 0.3..0.9
+      // Pulse inner ring
+      const pulse = Math.sin(timestamp * 0.002 * speed);
+      innerRing.scale.setScalar(1 + pulse * 0.05);
+      innerRingMat.opacity = 0.2 + pulse * 0.1;
 
-      // Drift particles and wrap at sphere boundary
-      for (let i = 0; i < N_PARTICLES; i++) {
+      // Subtle lens ring pulse
+      lensRingMat.opacity = 0.5 + Math.sin(timestamp * 0.001 * speed) * 0.15;
+
+      // Orbit cell particles
+      for (const cell of cellData) {
+        cell.angle += cell.speed * speed;
+        const wobble = Math.sin(timestamp * 0.001 + cell.yOffset) * 0.1;
+        cell.mesh.position.x = Math.cos(cell.angle) * cell.radius;
+        cell.mesh.position.y = Math.sin(cell.angle) * cell.radius + wobble;
+      }
+
+      // Drift ambient particles
+      for (let i = 0; i < N_AMBIENT; i++) {
         const ix = i * 3;
-        particlePositions[ix]     += particleVelocities[ix];
-        particlePositions[ix + 1] += particleVelocities[ix + 1];
-        particlePositions[ix + 2] += particleVelocities[ix + 2];
+        ambientPositions[ix] += ambientVelocities[ix] * speed;
+        ambientPositions[ix + 1] += ambientVelocities[ix + 1] * speed;
+        ambientPositions[ix + 2] += ambientVelocities[ix + 2] * speed;
 
-        const x = particlePositions[ix];
-        const y = particlePositions[ix + 1];
-        const z = particlePositions[ix + 2];
-        if (x * x + y * y + z * z > PARTICLE_SPHERE_RADIUS * PARTICLE_SPHERE_RADIUS) {
-          // Reflect back toward origin by negating position
-          particlePositions[ix]     = -x;
-          particlePositions[ix + 1] = -y;
-          particlePositions[ix + 2] = -z;
+        const dist = Math.sqrt(
+          ambientPositions[ix] ** 2 +
+            ambientPositions[ix + 1] ** 2 +
+            ambientPositions[ix + 2] ** 2,
+        );
+        if (dist > 5.5) {
+          const a = Math.random() * Math.PI * 2;
+          const r = 2.5 + Math.random() * 0.5;
+          ambientPositions[ix] = Math.cos(a) * r;
+          ambientPositions[ix + 1] = Math.sin(a) * r;
+          ambientPositions[ix + 2] = (Math.random() - 0.5) * 2;
         }
       }
-      particleGeo.attributes.position.needsUpdate = true;
+      ambientGeo.attributes.position.needsUpdate = true;
 
       renderer.render(scene, camera);
     };
     frameId = requestAnimationFrame(animate);
 
-    // ── Cleanup ───────────────────────────────────────────────────────────
+    // ── Cleanup ─────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
-
       scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
+        if (
+          obj instanceof THREE.Mesh ||
+          obj instanceof THREE.Points ||
+          obj instanceof THREE.Line
+        ) {
           obj.geometry.dispose();
           if (Array.isArray(obj.material)) {
             obj.material.forEach((m) => m.dispose());
@@ -209,9 +277,8 @@ export function useThreeScene(
           }
         }
       });
-
       renderer.dispose();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasRef, reducedMotion]);
 }
