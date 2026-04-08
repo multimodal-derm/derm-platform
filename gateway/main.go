@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	// Structured JSON logging
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
 	cfg := config.Load()
@@ -25,12 +24,14 @@ func main() {
 	slog.Info("starting gateway",
 		"port", cfg.Port,
 		"inference_url", cfg.InferenceURL,
+		"rag_url", cfg.RAGURL,
 		"max_upload_mb", cfg.MaxUploadSizeMB,
 	)
 
 	// ── Routes ──
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/predict", handlers.Predict(cfg.InferenceURL, maxBytes))
+	mux.HandleFunc("POST /api/v1/summarize", handlers.Summarize(cfg.RAGURL))
 	mux.HandleFunc("GET /api/v1/health", handlers.Health(cfg.InferenceURL))
 	mux.HandleFunc("GET /api/v1/model/info", handlers.ModelInfo(cfg.InferenceURL))
 
@@ -44,7 +45,7 @@ func main() {
 		Addr:         ":" + cfg.Port,
 		Handler:      handler,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		WriteTimeout: 120 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
@@ -66,7 +67,8 @@ func main() {
 	fmt.Printf("\n  🩺 derm-platform gateway\n")
 	fmt.Printf("  ────────────────────────\n")
 	fmt.Printf("  http://localhost:%s/api/v1/health\n", cfg.Port)
-	fmt.Printf("  http://localhost:%s/api/v1/predict\n\n", cfg.Port)
+	fmt.Printf("  http://localhost:%s/api/v1/predict\n", cfg.Port)
+	fmt.Printf("  http://localhost:%s/api/v1/summarize\n\n", cfg.Port)
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		slog.Error("server error", "error", err)

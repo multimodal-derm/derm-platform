@@ -1,4 +1,4 @@
-import { PredictionResponse, HealthResponse, ClinicalMetadata } from "./types";
+import { PredictionResponse, HealthResponse, ClinicalMetadata, SummaryResponse } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -53,5 +53,29 @@ export async function predict(
 export async function getModelInfo(): Promise<Record<string, unknown>> {
   const res = await fetch(`${API_BASE}/api/v1/model/info`);
   if (!res.ok) throw new ApiError(res.status, "Failed to get model info");
+  return res.json();
+}
+
+export async function generateSummary(
+  predictionResult: PredictionResponse,
+): Promise<SummaryResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/summarize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prediction: predictionResult.prediction,
+      confidence: predictionResult.confidence,
+      risk_level: predictionResult.risk_level,
+      probabilities: predictionResult.probabilities,
+      abcd_features: predictionResult.abcd_features,
+      clinical_text: predictionResult.clinical_text,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Summary generation failed" }));
+    throw new ApiError(res.status, err.error, err.details);
+  }
+
   return res.json();
 }

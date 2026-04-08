@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Port            string
 	InferenceURL    string
+	RAGURL          string
 	AllowedOrigins  string
 	MaxUploadSizeMB int64
 }
@@ -16,6 +17,7 @@ func Load() *Config {
 	return &Config{
 		Port:            getEnv("GATEWAY_PORT", "8080"),
 		InferenceURL:    getEnv("INFERENCE_URL", "http://localhost:8081"),
+		RAGURL:          getEnv("RAG_URL", "http://localhost:8082"),
 		AllowedOrigins:  getEnv("ALLOWED_ORIGINS", "http://localhost:3000"),
 		MaxUploadSizeMB: getEnvInt("MAX_UPLOAD_SIZE_MB", 10),
 	}

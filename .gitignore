@@ -44,3 +44,5 @@ model/*.bin
 
 # ── Kiro specs (remove this line to track specs in git) ──────────────────────
 .kiro/
+.env
+model/

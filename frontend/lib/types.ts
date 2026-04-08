@@ -22,6 +22,12 @@ export interface PredictionResponse {
   inference_time_ms: number;
 }
 
+export interface SummaryResponse {
+  summary: string;
+  sources_used: number;
+  generation_time_ms: number;
+}
+
 export interface HealthResponse {
   status: string;
   gateway: string;
