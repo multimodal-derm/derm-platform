@@ -1,23 +1,31 @@
 import { cn } from "@/lib/utils";
 import { HTMLAttributes } from "react";
 
-interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "high" | "moderate" | "low";
+export interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "secondary" | "destructive" | "outline";
 }
 
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
-    <span
+    <div
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         {
-          "bg-gray-100 text-gray-700": variant === "default",
-          "bg-risk-high-bg text-risk-high border border-risk-high/20":
-            variant === "high",
-          "bg-risk-moderate-bg text-risk-moderate border border-risk-moderate/20":
-            variant === "moderate",
-          "bg-risk-low-bg text-risk-low border border-risk-low/20":
-            variant === "low",
+          // Highest contrast (Solid Black / Solid White)
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80":
+            variant === "default",
+            
+          // Medium contrast (Muted Gray)
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80":
+            variant === "secondary",
+            
+          // Error/High Risk state (This uses the standard Shadcn red)
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80":
+            variant === "destructive",
+            
+          // Lowest contrast (Transparent background with a border)
+          "text-foreground border-border": 
+            variant === "outline",
         },
         className,
       )}

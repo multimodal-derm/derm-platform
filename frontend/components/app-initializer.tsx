@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { checkHealth } from "@/lib/api";
+// Modern Phosphor imports
+import { GlobeIcon, CpuIcon, FireIcon, CheckCircleIcon } from "@phosphor-icons/react";
 
 const MedicalLoadingScreen = dynamic(
   () => import("@/components/medical-loading-screen"),
@@ -13,11 +15,28 @@ const MAX_WAIT_MS = 30_000;
 const POLL_INTERVAL_MS = 1_500;
 const MIN_DISPLAY_MS = 4_000;
 
+// Updated to the new rich stage structure
 const INIT_STAGES = [
-  "Connecting to Gateway",
-  "Loading Inference Engine",
-  "Warming Model Weights",
-  "Ready",
+  { 
+    text: "Connecting to Gateway", 
+    detail: "Establishing Secure API Tunnel", 
+    icon: GlobeIcon 
+  },
+  { 
+    text: "Loading Inference Engine", 
+    detail: "Allocating GPU Resources", 
+    icon: CpuIcon 
+  },
+  { 
+    text: "Warming Model Weights", 
+    detail: "Optimizing SigLIP & ClinicalBERT", 
+    icon: FireIcon 
+  },
+  { 
+    text: "System Ready", 
+    detail: "All Nodes Operational", 
+    icon: CheckCircleIcon 
+  },
 ] as const;
 
 export default function AppInitializer({
@@ -72,12 +91,15 @@ export default function AppInitializer({
   return (
     <>
       <MedicalLoadingScreen
-        isVisible={mounted && !ready}
-        title="Initializing"
+        isVisible={!ready}
+        title="INITIALIZING MULTIMODAL STACK"
         stages={INIT_STAGES}
-        subtitle="STARTING SERVICES"
       />
-      {ready && children}
+      {ready && (
+        <div className="font-sans antialiased animate-in fade-in duration-700">
+          {children}
+        </div>
+      )}
     </>
   );
 }

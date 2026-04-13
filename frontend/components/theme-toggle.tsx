@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+// Modern Phosphor Imports - No suffixes
+import { Sun, MoonStars } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -26,9 +28,29 @@ export default function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className="p-2 rounded-lg text-clinical-muted hover:text-clinical-text hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+      className={cn(
+        "group relative flex size-9 items-center justify-center rounded-xl transition-all duration-300",
+        "border border-border/40 bg-background shadow-sm hover:border-foreground/20 hover:bg-muted/50",
+        "dark:hover:bg-muted/10"
+      )}
     >
-      {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      <div className="relative size-4 overflow-hidden">
+        {/* Sun Icon for Dark Mode (indicating switch to light) */}
+        <div className={cn(
+          "absolute inset-0 transition-all duration-500 ease-out",
+          dark ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+        )}>
+          <Sun weight="duotone" className="size-4 text-amber-500" />
+        </div>
+
+        {/* Moon Icon for Light Mode (indicating switch to dark) */}
+        <div className={cn(
+          "absolute inset-0 transition-all duration-500 ease-out",
+          dark ? "-translate-y-8 opacity-0" : "translate-y-0 opacity-100"
+        )}>
+          <MoonStars weight="duotone" className="size-4 text-foreground/70 group-hover:text-foreground" />
+        </div>
+      </div>
     </button>
   );
 }

@@ -1,15 +1,52 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
+  darkMode: ["class"], // Enables Shadcn dark mode switching
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./lib/**/*.{ts,tsx}",
   ],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
+        // --- SHADCN SYSTEM COLORS ---
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+
+        // --- YOUR CUSTOM COLORS ---
         brand: {
           50: "#f0f9ff",
           100: "#e0f2fe",
@@ -22,13 +59,6 @@ const config: Config = {
           800: "#075985",
           900: "#0c4a6e",
         },
-        clinical: {
-          bg: "#f8fafc",
-          surface: "#ffffff",
-          border: "#e2e8f0",
-          text: "#0f172a",
-          muted: "#64748b",
-        },
         risk: {
           high: "#B3261E",
           "high-bg": "#fef2f2",
@@ -39,13 +69,19 @@ const config: Config = {
         },
         focus: "#FFDD00",
       },
+      borderRadius: {
+        // Shadcn dynamic border radius
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
-        mono: ['"JetBrains Mono"', "monospace"],
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "monospace"],
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 };
 
 export default config;

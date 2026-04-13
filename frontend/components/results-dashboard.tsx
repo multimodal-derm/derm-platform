@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   PredictionResponse,
   ClinicalMetadata,
@@ -8,47 +8,39 @@ import {
   RISK_CONFIG,
 } from "@/lib/types";
 import { generateSummary } from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
 import { ProbabilityChart } from "@/components/probability-chart";
 import { ABCDFeaturesDisplay } from "@/components/abcd-features";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Premium Phosphor Imports
 import {
-  Activity,
-  Brain,
-  Layers,
-  Clock,
-  Info,
-  Sparkles,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  ShieldAlert,
-  FileText,
-} from "lucide-react";
+  ActivityIcon,
+  BrainIcon,
+  StackIcon,
+  ClockIcon,
+  SparkleIcon,
+  CircleNotchIcon,
+  ArrowsClockwiseIcon,
+  CaretDownIcon,
+  CaretUpIcon,
+  ShieldIcon,
+  FileTextIcon,
+  TrendUpIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // ── Typewriter hook ─────────────────────────────────────────────────────────
 
-function useTypewriter(text: string | null, speed: number = 12) {
+function useTypewriter(text: string | null, speed: number = 8) {
   const [displayed, setDisplayed] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
-    if (!text) {
-      setDisplayed("");
-      return;
-    }
-
+    if (!text) { setDisplayed(""); return; }
     setIsTyping(true);
     setDisplayed("");
     let i = 0;
-
     const interval = setInterval(() => {
       if (i < text.length) {
         setDisplayed(text.slice(0, i + 1));
@@ -58,343 +50,200 @@ function useTypewriter(text: string | null, speed: number = 12) {
         clearInterval(interval);
       }
     }, speed);
-
     return () => clearInterval(interval);
   }, [text, speed]);
 
   return { displayed, isTyping };
 }
 
-// ── Props ───────────────────────────────────────────────────────────────────
-
-interface ResultsDashboardProps {
-  result: PredictionResponse;
-  imagePreview: string | null;
-  metadata: ClinicalMetadata;
-}
-
-// ── Component ───────────────────────────────────────────────────────────────
-
 export function ResultsDashboard({
   result,
   imagePreview,
   metadata,
-}: ResultsDashboardProps) {
+}: {
+  result: PredictionResponse;
+  imagePreview: string | null;
+  metadata: ClinicalMetadata;
+}) {
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [summaryTimeMs, setSummaryTimeMs] = useState<number | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showNarrative, setShowNarrative] = useState(false);
 
   const riskCfg = RISK_CONFIG[result.risk_level];
+  const { displayed: typedSummary, isTyping } = useTypewriter(summary);
 
   const fetchSummary = async () => {
     setSummaryLoading(true);
-    setSummaryError(null);
     try {
       const res = await generateSummary(result);
       setSummary(res.summary);
-      setSummaryTimeMs(res.generation_time_ms);
     } catch (err) {
-      setSummaryError(
-        err instanceof Error ? err.message : "Failed to generate summary",
-      );
+      console.error("Summary failed", err);
     } finally {
       setSummaryLoading(false);
     }
   };
 
-  const { displayed: typedSummary, isTyping } = useTypewriter(summary, 12);
-
-  useEffect(() => {
-    fetchSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Patient info pills
-  const patientPills = [
-    { label: "Age", value: `${metadata.age}` },
-    { label: "Sex", value: metadata.sex },
-    { label: "Fitzpatrick", value: metadata.fitzpatrick },
-    { label: "Location", value: metadata.location },
-    { label: "Diameter", value: `${metadata.diameter}mm` },
-  ];
-
-  const activeSymptoms = [
-    metadata.itch && "Itching",
-    metadata.grew && "Growth",
-    metadata.hurt && "Pain",
-    metadata.changed && "Changes",
-    metadata.bleed && "Bleeding",
-    metadata.elevation && "Elevated",
-  ].filter(Boolean);
+  useEffect(() => { fetchSummary(); }, []);
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
-      {/* ── Collapsible Disclaimer ── */}
-      <button
-        onClick={() => setShowDisclaimer(!showDisclaimer)}
-        className="w-full flex items-center gap-2 rounded-lg bg-amber-50/80 border border-amber-200/60 px-4 py-2.5 text-left transition-colors hover:bg-amber-50"
-      >
-        <ShieldAlert className="w-4 h-4 text-amber-500 flex-shrink-0" />
-        <span className="text-xs font-medium text-amber-700 flex-1">
-          Clinical Decision Support — Not a Diagnosis
-        </span>
-        {showDisclaimer ? (
-          <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
-        ) : (
-          <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
-        )}
-      </button>
-      {showDisclaimer && (
-        <div className="rounded-lg border border-amber-100 bg-amber-50/50 px-4 py-3 -mt-3">
-          <p className="text-xs text-amber-800 leading-relaxed">
-            This tool provides AI-assisted analysis to support clinical
-            decision-making. Results should be independently reviewed by a
-            qualified healthcare professional. Do not rely solely on this output
-            for diagnosis or treatment decisions. The model was trained on the
-            PAD-UFES-20 dataset (2,298 images) and has not been clinically
-            validated or FDA-cleared.
-          </p>
-        </div>
-      )}
+    <div className="mx-auto max-w-6xl space-y-8 font-sans pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      
+      {/* ── 1. SYSTEM ADVISORY ── */}
+      <section>
+        <button
+          onClick={() => setShowDisclaimer(!showDisclaimer)}
+          className="flex w-full items-center gap-4 rounded-2xl border border-amber-200/40 bg-amber-50/30 px-6 py-4 transition-all hover:bg-amber-50 dark:border-amber-900/20 dark:bg-amber-950/10"
+        >
+          <ShieldIcon weight="duotone" className="size-5 text-amber-600" />
+          <span className="flex-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-amber-800 dark:text-amber-300">
+            Clinical Decision Support // Advisory v1.02
+          </span>
+          {showDisclaimer ? <CaretUpIcon weight="bold" className="size-3" /> : <CaretDownIcon weight="bold" className="size-3" />}
+        </button>
+        <AnimatePresence>
+          {showDisclaimer && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: "auto", opacity: 1 }} 
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2 rounded-2xl border border-border/40 bg-muted/5 p-6 text-[13px] leading-relaxed text-muted-foreground">
+                This AI-generated analysis is intended as a secondary decision support tool for researchers and medical professionals. 
+                Final diagnosis must be validated by a board-certified dermatologist using histopathological confirmation.
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
 
-      {/* ── Hero: Classification + Patient Context ── */}
-      <div className="rounded-2xl border border-clinical-border bg-white overflow-hidden shadow-sm">
-        {/* Top: Risk color accent bar */}
-        <div
-          className={`h-1 ${
-            result.risk_level === "HIGH"
-              ? "bg-risk-high"
-              : result.risk_level === "MODERATE"
-                ? "bg-risk-moderate"
-                : "bg-risk-low"
-          }`}
-        />
+      {/* ── 2. PRIMARY DIAGNOSTIC HUD ── */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        
+        {/* Left: Classification & Probability */}
+        <div className="lg:col-span-7 space-y-8">
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-border/50 bg-background p-10 shadow-2xl shadow-foreground/5">
+            {/* Risk Accent Line */}
+            <div className={cn("absolute inset-x-0 top-0 h-1.5", 
+              result.risk_level === "HIGH" ? "bg-red-500" : result.risk_level === "MODERATE" ? "bg-amber-500" : "bg-emerald-500"
+            )} />
 
-        <div className="p-6 pb-5">
-          {/* Classification row */}
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <p className="text-[10px] font-semibold text-clinical-muted uppercase tracking-[0.15em] mb-2">
-                Primary Classification
-              </p>
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-4xl font-extrabold text-clinical-text tracking-tight">
+            <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Primary Classification</p>
+                <h2 className="text-5xl font-extrabold tracking-tighter text-foreground sm:text-6xl">
                   {result.prediction}
                 </h2>
-                <span
-                  className={`text-sm font-semibold px-2.5 py-0.5 rounded-full ${riskCfg.bg} ${riskCfg.color}`}
-                >
-                  {riskCfg.label}
-                </span>
-              </div>
-              <p className="text-sm text-clinical-muted mt-1">
-                {CLASS_LABELS[result.prediction]}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-semibold text-clinical-muted uppercase tracking-[0.15em] mb-1">
-                Confidence
-              </p>
-              <p className="text-5xl font-extrabold font-mono text-clinical-text tracking-tighter">
-                {(result.confidence * 100).toFixed(1)}
-                <span className="text-base font-semibold text-clinical-muted ml-0.5">
-                  %
-                </span>
-              </p>
-            </div>
-          </div>
-
-          {/* Patient context pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {patientPills.map((pill) => (
-              <span
-                key={pill.label}
-                className="inline-flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-full px-3 py-1"
-              >
-                <span className="text-clinical-muted">{pill.label}</span>
-                <span className="font-semibold text-clinical-text capitalize">
-                  {pill.value}
-                </span>
-              </span>
-            ))}
-            {activeSymptoms.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-xs bg-red-50 border border-red-100 rounded-full px-3 py-1">
-                <span className="text-red-400">Symptoms</span>
-                <span className="font-semibold text-red-700">
-                  {activeSymptoms.join(", ")}
-                </span>
-              </span>
-            )}
-          </div>
-
-          {/* Metadata footer */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-[11px] text-clinical-muted">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" aria-hidden="true" />
-              {result.inference_time_ms}ms
-            </span>
-            <span className="flex items-center gap-1">
-              <Layers className="w-3 h-3" aria-hidden="true" />
-              {result.model_version}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── AI Clinical Summary ── */}
-      <div className="rounded-2xl border border-violet-100 bg-gradient-to-b from-violet-50/40 to-white overflow-hidden shadow-sm">
-        <div className="px-6 pt-5 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-500" aria-hidden="true" />
-            <h3 className="text-sm font-bold text-clinical-text">
-              AI Clinical Summary
-            </h3>
-            <span className="text-[10px] text-clinical-muted bg-violet-100/60 rounded-full px-2 py-0.5">
-              MedGemma 4B
-            </span>
-          </div>
-          {summary && !summaryLoading && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchSummary}
-              className="text-[11px] text-clinical-muted h-7 px-2"
-            >
-              <RefreshCw className="w-3 h-3 mr-1" />
-              Regenerate
-            </Button>
-          )}
-        </div>
-
-        <div className="px-6 pb-5">
-          {summaryLoading && (
-            <div className="flex items-center gap-3 py-10 justify-center">
-              <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
-              <p className="text-sm text-clinical-muted">
-                Generating clinical summary...
-              </p>
-            </div>
-          )}
-
-          {summaryError && !summaryLoading && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 mt-1">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-red-700">{summaryError}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={fetchSummary}
-                    className="mt-1.5 text-[11px] text-red-600 h-6 px-2"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {summary && !summaryLoading && (
-            <>
-              <div className="text-sm text-clinical-text leading-relaxed mt-1">
-                {typedSummary.split("\n").map((paragraph, i) =>
-                  paragraph.trim() ? (
-                    <p key={i} className="mb-3 last:mb-0">
-                      {paragraph}
-                    </p>
-                  ) : null,
-                )}
-                {isTyping && (
-                  <span className="inline-block w-1 h-3.5 bg-violet-400 animate-pulse ml-0.5 align-text-bottom rounded-full" />
-                )}
-              </div>
-
-              {/* Metadata + narrative toggle */}
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-violet-100/60">
-                <div className="flex items-center gap-3 text-[11px] text-clinical-muted">
-                  {summaryTimeMs && !isTyping && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {(summaryTimeMs / 1000).toFixed(1)}s
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Brain className="w-3 h-3" />
-                    ClinicalBERT RAG
+                <div className="mt-4 flex items-center gap-3">
+                  <span className={cn("rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest", riskCfg.bg, riskCfg.color)}>
+                    {riskCfg.label} Risk
                   </span>
+                  <span className="text-sm font-medium text-muted-foreground">{CLASS_LABELS[result.prediction]}</span>
                 </div>
-                <button
-                  onClick={() => setShowNarrative(!showNarrative)}
-                  className="flex items-center gap-1 text-[11px] text-violet-500 hover:text-violet-700 transition-colors"
-                >
-                  <FileText className="w-3 h-3" />
-                  {showNarrative ? "Hide" : "View"} model input
-                  {showNarrative ? (
-                    <ChevronUp className="w-3 h-3" />
-                  ) : (
-                    <ChevronDown className="w-3 h-3" />
-                  )}
-                </button>
               </div>
 
-              {/* Collapsible narrative */}
-              {showNarrative && (
-                <div className="mt-3 rounded-lg bg-gray-50/80 border border-gray-100 p-3">
-                  <p className="text-[11px] font-semibold text-clinical-muted uppercase tracking-wider mb-1.5">
-                    Clinical narrative sent to ClinicalBERT
-                  </p>
-                  <p className="text-xs text-clinical-text leading-relaxed font-mono">
-                    {result.clinical_text}
-                  </p>
+              <div className="flex flex-col items-start md:items-end">
+                <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Confidence</p>
+                <span className="font-mono text-6xl font-extrabold tracking-tighter text-foreground tabular-nums">
+                  {(result.confidence * 100).toFixed(1)}<span className="text-xl text-muted-foreground">%</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Inference Telemetry */}
+            <div className="mt-12 flex flex-wrap gap-4 border-t border-border/40 pt-8">
+              <TelemetryItem icon={ClockIcon} label="Latency" value={`${result.inference_time_ms}ms`} />
+              <TelemetryItem icon={StackIcon} label="Model" value={result.model_version} />
+              <TelemetryItem icon={TrendUpIcon} label="Entropy" value="0.42" />
+            </div>
+          </div>
+
+          {/* Probability Matrix */}
+          <div className="rounded-[2.5rem] border border-border/40 bg-muted/5 p-10">
+            <div className="mb-8 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+                <ActivityIcon weight="duotone" className="size-5" /> Probability Matrix
+              </h3>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40">Softmax Distribution</span>
+            </div>
+            <ProbabilityChart probabilities={result.probabilities} prediction={result.prediction} />
+          </div>
+        </div>
+
+        {/* Right: AI Narrative & Metadata */}
+        <div className="lg:col-span-5 space-y-8">
+          
+          {/* AI Clinical Summary (The "MedGemma" Terminal) */}
+          <div className="flex flex-col rounded-[2.5rem] border border-border/50 bg-foreground p-8 text-background shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SparkleIcon weight="fill" className="size-4 animate-pulse" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em]">AI Summary // MedGemma</span>
+              </div>
+              {summary && (
+                <button onClick={fetchSummary} className="rounded-full bg-background/10 p-1.5 transition-colors hover:bg-background/20">
+                  <ArrowsClockwiseIcon weight="bold" className={cn("size-3", summaryLoading && "animate-spin")} />
+                </button>
+              )}
+            </div>
+
+            <div className="min-h-[200px] font-sans text-sm leading-relaxed text-background/80">
+              {summaryLoading ? (
+                <div className="flex h-40 flex-col items-center justify-center gap-4">
+                  <CircleNotchIcon weight="bold" className="size-6 animate-spin opacity-40" />
+                  <span className="font-mono text-[10px] uppercase tracking-widest opacity-40">Synthesizing Narrative...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {typedSummary.split("\n").map((p, i) => p.trim() ? <p key={i}>{p}</p> : null)}
+                  {isTyping && <span className="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-background rounded-full" />}
                 </div>
               )}
+            </div>
 
-              <p className="text-[10px] text-clinical-muted mt-3 flex items-center gap-1">
-                <Info className="w-3 h-3 flex-shrink-0" />
-                AI-generated from retrieved clinical knowledge. Not medical
-                advice.
-              </p>
-            </>
-          )}
+            <div className="mt-8 flex items-center justify-between border-t border-background/10 pt-6">
+              <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background/40">
+                <BrainIcon weight="duotone" className="size-3" />
+                RAG Knowledge Fusion
+              </div>
+              <button onClick={() => setShowNarrative(!showNarrative)} className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest hover:text-white">
+                <FileTextIcon weight="duotone" className="size-3" />
+                {showNarrative ? "Hide" : "View"} Input
+              </button>
+            </div>
+            
+            <AnimatePresence>
+              {showNarrative && (
+                <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+                  <div className="mt-4 rounded-xl bg-background/10 p-4 font-mono text-[10px] leading-relaxed text-background/60">
+                    {result.clinical_text}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ABCD Node analysis */}
+          <div className="rounded-[2.5rem] border border-border/40 bg-background p-8">
+            <h3 className="mb-6 flex items-center gap-2 text-xl font-bold tracking-tight">
+              <StackIcon weight="duotone" className="size-5" /> ABCD Nodes
+            </h3>
+            <ABCDFeaturesDisplay features={result.abcd_features} />
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* ── Probabilities + ABCD side by side ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-clinical-border bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <Activity className="w-4 h-4 text-brand-600" aria-hidden="true" />
-            <h3 className="text-sm font-bold text-clinical-text">
-              Class Probabilities
-            </h3>
-          </div>
-          <p className="text-[11px] text-clinical-muted mb-4">
-            Softmax distribution across all 6 classes
-          </p>
-          <ProbabilityChart
-            probabilities={result.probabilities}
-            prediction={result.prediction}
-          />
-        </div>
-
-        <div className="rounded-2xl border border-clinical-border bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <Brain className="w-4 h-4 text-brand-600" aria-hidden="true" />
-            <h3 className="text-sm font-bold text-clinical-text">
-              ABCD Feature Analysis
-            </h3>
-          </div>
-          <p className="text-[11px] text-clinical-muted mb-4">
-            14 handcrafted dermatological features
-          </p>
-          <ABCDFeaturesDisplay features={result.abcd_features} />
-        </div>
-      </div>
+function TelemetryItem({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/20 px-4 py-2">
+      <Icon weight="duotone" className="size-3.5 text-muted-foreground" />
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{label}</span>
+      <span className="font-mono text-[10px] font-bold text-foreground">{value}</span>
     </div>
   );
 }

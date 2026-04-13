@@ -1,7 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+// Premium Phosphor Imports
+import {
+  ApertureIcon,
+  XCircleIcon,
+  FileImageIcon,
+  CloudArrowUpIcon,
+} from "@phosphor-icons/react";
 import { useCallback, useState, useRef } from "react";
 
 interface ImageUploadProps {
@@ -44,29 +50,41 @@ export function ImageUpload({
 
   if (preview) {
     return (
-      <div className="relative group">
-        <div className="rounded-xl overflow-hidden border border-clinical-border bg-black/5">
+      <div className="relative group animate-in fade-in zoom-in-95 duration-300">
+        <div className="relative rounded-2xl overflow-hidden border border-border/50 bg-muted/20 backdrop-blur-sm">
           <img
             src={preview}
             alt="Uploaded dermoscopic image"
-            className="w-full h-80 object-contain"
+            className="w-full h-80 object-contain p-2"
           />
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-clinical-muted">
-            <ImageIcon className="w-4 h-4" />
-            <span className="truncate max-w-[200px]">{image?.name}</span>
-            <span className="text-xs">
-              ({((image?.size || 0) / 1024 / 1024).toFixed(2)} MB)
+          {/* Subtle Overlay on hover */}
+          <div className="absolute inset-0 bg-background/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-foreground bg-background px-3 py-1 rounded-full border border-border/50 shadow-xl">
+              Source Locked
             </span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground/70">
+              <FileImageIcon weight="duotone" className="size-4" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold truncate max-w-[150px] text-foreground">
+                {image?.name}
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-tight">
+                {((image?.size || 0) / (1024 * 1024)).toFixed(2)} MB // RAW
+              </span>
+            </div>
           </div>
           <button
             onClick={onImageClear}
-            aria-label="Remove uploaded image"
-            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X className="w-4 h-4" aria-hidden="true" />
-            Remove
+            <XCircleIcon weight="duotone" className="size-4" />
+            Clear
           </button>
         </div>
       </div>
@@ -75,59 +93,53 @@ export function ImageUpload({
 
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragging(true);
-      }}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
-      role="button"
-      tabIndex={0}
-      aria-label="Upload dermoscopic image. Click or drag and drop."
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          inputRef.current?.click();
-        }
-      }}
       className={cn(
-        "relative flex flex-col items-center justify-center h-80 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+        "relative flex flex-col items-center justify-center h-80 rounded-[2rem] border-2 border-dashed transition-all duration-300 group",
         isDragging
-          ? "border-brand-500 bg-brand-50"
-          : "border-gray-300 hover:border-brand-400 hover:bg-gray-50",
+          ? "border-foreground bg-muted/10 scale-[0.99]"
+          : "border-border/60 bg-muted/5 hover:border-foreground/40 hover:bg-muted/10",
       )}
     >
       <input
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png"
-        aria-label="Select dermoscopic image file"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleFile(file);
         }}
         className="hidden"
       />
-      <div
-        className={cn(
-          "w-14 h-14 rounded-full flex items-center justify-center mb-4 transition-colors",
-          isDragging ? "bg-brand-100" : "bg-gray-100",
+      
+      <div className={cn(
+        "size-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 shadow-sm",
+        isDragging ? "bg-foreground text-background" : "bg-background text-foreground/40 border border-border/50 group-hover:text-foreground group-hover:border-foreground/20"
+      )}>
+        {isDragging ? (
+          <CloudArrowUpIcon weight="duotone" className="size-8 animate-bounce" />
+        ) : (
+          <ApertureIcon weight="duotone" className="size-8" />
         )}
-      >
-        <Upload
-          className={cn(
-            "w-6 h-6",
-            isDragging ? "text-brand-600" : "text-clinical-muted",
-          )}
-        />
       </div>
-      <p className="text-sm font-medium text-clinical-text mb-1">
-        Drop dermoscopic image here
-      </p>
-      <p className="text-xs text-clinical-muted">
-        JPEG or PNG, up to 10MB
-      </p>
+
+      <div className="text-center space-y-1">
+        <p className="text-sm font-bold tracking-tight text-foreground">
+          Import Dermoscopic Data
+        </p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+          Drop file or click to browse
+        </p>
+      </div>
+
+      <div className="absolute bottom-6 flex gap-4 opacity-40">
+         <span className="font-mono text-[9px] uppercase tracking-tighter">JPEG</span>
+         <span className="font-mono text-[9px] uppercase tracking-tighter">PNG</span>
+         <span className="font-mono text-[9px] uppercase tracking-tighter">MAX 10MB</span>
+      </div>
     </div>
   );
 }

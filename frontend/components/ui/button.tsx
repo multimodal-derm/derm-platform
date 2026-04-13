@@ -1,33 +1,37 @@
 import { cn } from "@/lib/utils";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "outline";
   size?: "sm" | "md" | "lg";
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", disabled, ...props }, ref) => {
+  ({ className, variant = "primary", size = "md", ...props }, ref) => {
     return (
       <button
         ref={ref}
-        disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed",
+          // Base styles: centered, standard radius, accessible focus rings, disabled states
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+          
+          // Variants mapped to the monochrome theme
           {
-            "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800":
+            "bg-primary text-primary-foreground hover:bg-primary/90":
               variant === "primary",
-            "bg-clinical-bg text-clinical-text hover:bg-gray-100 border border-clinical-border":
+            "bg-secondary text-secondary-foreground hover:bg-secondary/80":
               variant === "secondary",
-            "text-clinical-muted hover:text-clinical-text hover:bg-gray-100":
+            "hover:bg-accent hover:text-accent-foreground text-muted-foreground":
               variant === "ghost",
-            "border border-clinical-border text-clinical-text hover:bg-gray-50":
+            "border border-input bg-background hover:bg-accent hover:text-accent-foreground":
               variant === "outline",
           },
+          
+          // Sizing
           {
             "h-8 px-3 text-xs": size === "sm",
-            "h-10 px-4 text-sm": size === "md",
-            "h-12 px-6 text-base": size === "lg",
+            "h-10 px-4 py-2 text-sm": size === "md",
+            "h-12 px-8 text-base": size === "lg",
           },
           className,
         )}

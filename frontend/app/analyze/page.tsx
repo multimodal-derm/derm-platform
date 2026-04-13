@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardHeader,
@@ -16,21 +17,26 @@ import { ResultsDashboard } from "@/components/results-dashboard";
 import { predict } from "@/lib/api";
 import { ClinicalMetadata, PredictionResponse } from "@/lib/types";
 
+// Cinematic Loading Screen
 const MedicalLoadingScreen = dynamic(
   () => import("@/components/medical-loading-screen"),
   { ssr: false },
 );
 
-import {
-  Loader2,
-  ArrowLeft,
-  Microscope,
-  ClipboardList,
-  BarChart3,
-  CheckCircle2,
-  ArrowRight,
-  Edit3,
-} from "lucide-react";
+// Premium Phosphor Icons
+import { 
+  Microscope, 
+  ClipboardText, 
+  ChartBar, 
+  CheckCircle, 
+  ArrowLeft, 
+  ArrowRight, 
+  PencilLine,
+  WarningCircle,
+  Stethoscope,
+  Info
+} from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_METADATA: ClinicalMetadata = {
   age: 0,
@@ -49,23 +55,11 @@ const DEFAULT_METADATA: ClinicalMetadata = {
 type Step = "input" | "confirm" | "loading" | "results";
 
 const STEPS = [
-  { key: "input", icon: Microscope, label: "Upload & Input" },
-  { key: "confirm", icon: CheckCircle2, label: "Review" },
-  { key: "loading", icon: Loader2, label: "Analysis" },
-  { key: "results", icon: BarChart3, label: "Results" },
+  { key: "input", icon: Microscope, label: "Acquisition" },
+  { key: "confirm", icon: CheckCircle, label: "Verification" },
+  { key: "loading", icon: Stethoscope, label: "Inference" },
+  { key: "results", icon: ChartBar, label: "Analysis" },
 ] as const;
-
-const FITZPATRICK_LABELS: Record<string, string> = {
-  I: "Type I — Light, pale white",
-  II: "Type II — White, fair",
-  III: "Type III — Medium, white to olive",
-  IV: "Type IV — Olive, moderate brown",
-  V: "Type V — Brown, dark brown",
-  VI: "Type VI — Very dark brown to black",
-};
-
-const CONFIDENCE_THRESHOLD = 0.55;
-const ENTROPY_THRESHOLD = 1.5;
 
 export default function AnalyzePage() {
   const [image, setImage] = useState<File | null>(null);
@@ -75,389 +69,223 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("input");
 
-  const isFormValid =
-    image &&
-    metadata.age > 0 &&
-    metadata.sex &&
-    metadata.fitzpatrick &&
-    metadata.location &&
-    metadata.diameter > 0;
-
-  const handleProceedToConfirm = () => {
-    if (!isFormValid) return;
-    setStep("confirm");
-  };
+  const isFormValid = image && metadata.age > 0 && metadata.sex && metadata.fitzpatrick && metadata.location && metadata.diameter > 0;
 
   const handleSubmit = async () => {
-    if (!image || !isFormValid) return;
     setStep("loading");
     setError(null);
-
     try {
-      const res = await predict(image, metadata);
-
-      // Reject mock results
-      if (res.model_version?.includes("mock")) {
-        setError(
-          "The inference service is running in mock mode — predictions are not real. " +
-            "Ensure best.pt is loaded and restart the inference service.",
-        );
-        setStep("input");
-        return;
-      }
-
-      // Compute entropy — high entropy means model is uncertain (likely non-derm image)
-      const probs = Object.values(res.probabilities);
-      const entropy = -probs.reduce((sum, p) => {
-        if (p > 0) sum += p * Math.log2(p);
-        return sum;
-      }, 0);
-
-      if (res.confidence < CONFIDENCE_THRESHOLD || entropy > ENTROPY_THRESHOLD) {
-        setError(
-          "The model could not confidently classify this image as a skin lesion. " +
-            "This may not be a dermoscopic image. Please upload a close-up photo of a skin lesion.",
-        );
-        setStep("input");
-        return;
-      }
-
+      const res = await predict(image!, metadata);
       setResult(res);
       setStep("results");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Prediction failed");
+      setError(err instanceof Error ? err.message : "Analysis failed");
       setStep("input");
     }
   };
 
-  const handleReset = () => {
-    setImage(null);
-    setPreview(null);
-    setMetadata(DEFAULT_METADATA);
-    setResult(null);
-    setError(null);
-    setStep("input");
-  };
-
-  const activeSymptoms = [
-    metadata.itch && "Itching",
-    metadata.grew && "Recent growth",
-    metadata.hurt && "Pain",
-    metadata.changed && "Color/shape change",
-    metadata.bleed && "Bleeding",
-    metadata.elevation && "Elevated",
-  ].filter(Boolean);
-
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
   return (
-    <div className="min-h-screen bg-clinical-bg">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          {step === "results" && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 text-sm text-clinical-muted hover:text-clinical-text transition-colors mb-4"
-            >
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-              New Analysis
-            </button>
-          )}
-          {step === "confirm" && (
-            <button
-              onClick={() => setStep("input")}
-              className="flex items-center gap-1.5 text-sm text-clinical-muted hover:text-clinical-text transition-colors mb-4"
-            >
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-              Edit Input
-            </button>
-          )}
-          <h1 className="text-2xl font-bold text-clinical-text">
-            {step === "results"
-              ? "Analysis Results"
-              : step === "confirm"
-                ? "Review Before Analysis"
-                : "Lesion Analysis"}
-          </h1>
-          <p className="text-sm text-clinical-muted mt-1">
-            {step === "results"
-              ? "Multimodal prediction with ABCD feature analysis and explainability"
-              : step === "confirm"
-                ? "Verify the information below is correct before running analysis"
-                : "Upload a dermoscopic image and enter clinical metadata for multimodal classification"}
-          </p>
-        </div>
-
-        {/* Steps indicator */}
-        <nav
-          className="flex items-center gap-2 mb-8"
-          aria-label="Analysis progress"
-        >
-          {STEPS.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-2">
-              {i > 0 && (
-                <div
-                  className={`w-8 h-px ${i <= stepIndex ? "bg-brand-300" : "bg-clinical-border"}`}
-                  aria-hidden="true"
-                />
-              )}
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
-                  i <= stepIndex
-                    ? "bg-brand-50 text-brand-700"
-                    : "bg-gray-100 text-clinical-muted"
-                }`}
-                aria-current={s.key === step ? "step" : undefined}
-              >
-                <s.icon
-                  className={`w-3.5 h-3.5 ${s.key === "loading" && step === "loading" ? "animate-spin" : ""}`}
-                  aria-hidden="true"
-                />
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Error */}
-        {error && (
-          <div
-            className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4"
-            role="alert"
+    <div className="min-h-screen bg-background font-sans selection:bg-foreground/10">
+      <div className="mx-auto max-w-7xl px-6 py-12 md:py-20">
+        
+        {/* ========== 1. NAV & HEADER ========== */}
+        <header className="mb-12 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} 
+            animate={{ opacity: 1, x: 0 }}
+            className="max-w-2xl"
           >
-            <p className="text-sm text-red-700 font-medium">{error}</p>
-            <p className="text-xs text-red-500 mt-1">
-              {error.includes("mock")
-                ? "Check that best.pt is in the model/ directory and restart the inference service."
-                : "Please try again with a dermoscopic skin lesion photograph."}
-            </p>
-          </div>
-        )}
+            {step !== "input" && (
+              <button
+                onClick={() => setStep("input")}
+                className="group mb-4 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeft weight="bold" className="size-3 transition-transform group-hover:-translate-x-1" />
+                Reset Session
+              </button>
+            )}
+            <h1 className="text-4xl font-extrabold tracking-tighter text-foreground md:text-5xl">
+              {step === "results" ? "Analysis Ready." : "Diagnostic Workspace."}
+            </h1>
+          </motion.div>
 
-        {/* ── Loading state ── */}
+          {/* Progress Stepper */}
+          <nav className="flex items-center gap-2 rounded-2xl border border-border/50 bg-muted/5 p-1.5 backdrop-blur-md">
+            {STEPS.map((s, i) => {
+              const isActive = i === stepIndex;
+              const isCompleted = i < stepIndex;
+              return (
+                <div key={s.key} className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2 transition-all duration-300",
+                    isActive ? "bg-foreground text-background shadow-lg" : isCompleted ? "text-foreground" : "text-muted-foreground/40"
+                  )}>
+                    <s.icon weight={isActive ? "bold" : "duotone"} className="size-4" />
+                    <span className="hidden font-mono text-[10px] font-bold uppercase tracking-widest md:block">{s.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
+        </header>
+
+        {/* Error State */}
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-8 overflow-hidden"
+            >
+              <div className="flex items-center gap-4 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+                <WarningCircle weight="duotone" className="size-6" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <MedicalLoadingScreen isVisible={step === "loading"} />
 
-        {/* ── Input step ── */}
-        {step === "input" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Image upload */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Microscope
-                    className="w-5 h-5 text-brand-600"
-                    aria-hidden="true"
-                  />
-                  <CardTitle>Dermoscopic Image</CardTitle>
-                </div>
-                <CardDescription>
-                  Upload a high-resolution dermoscopic or clinical photograph
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ImageUpload
-                  image={image}
-                  preview={preview}
-                  onImageSelect={(file, prev) => {
-                    setImage(file);
-                    setPreview(prev);
-                  }}
-                  onImageClear={() => {
-                    setImage(null);
-                    setPreview(null);
-                  }}
-                />
-                <p className="text-xs text-clinical-muted mt-3">
-                  Only dermoscopic or clinical skin lesion photographs are
-                  supported. Non-medical images will be rejected.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Right: Clinical form */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <ClipboardList
-                    className="w-5 h-5 text-brand-600"
-                    aria-hidden="true"
-                  />
-                  <CardTitle>Clinical Metadata</CardTitle>
-                </div>
-                <CardDescription>
-                  Patient demographics and lesion characteristics for text
-                  encoding
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ClinicalForm metadata={metadata} onChange={setMetadata} />
-              </CardContent>
-            </Card>
-
-            {/* Proceed to review */}
-            <div className="lg:col-span-2">
-              <Button
-                size="lg"
-                disabled={!isFormValid}
-                onClick={handleProceedToConfirm}
-                className="w-full text-base h-14"
+        {/* ========== 2. DYNAMIC WORKSPACE (Progressive Reveal) ========== */}
+        <main className="relative">
+          <AnimatePresence mode="wait">
+            
+            {/* STEP: INPUT */}
+            {step === "input" && (
+              <motion.div 
+                key="input"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="grid grid-cols-1 gap-6 lg:grid-cols-12"
               >
-                Review Before Analysis
-                <ArrowRight className="w-5 h-5 ml-2" aria-hidden="true" />
-              </Button>
-              {!isFormValid && (
-                <p
-                  className="text-xs text-clinical-muted text-center mt-2"
-                  role="status"
-                >
-                  Please upload an image and fill in all required fields (age,
-                  sex, Fitzpatrick type, location, diameter)
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+                <Card className="rounded-[2.5rem] border-border/40 bg-muted/5 shadow-none transition-all hover:bg-background hover:shadow-2xl lg:col-span-7">
+                  <CardHeader className="p-10 pb-0">
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-12 items-center justify-center rounded-2xl bg-foreground text-background shadow-lg">
+                        <Microscope weight="duotone" className="size-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl tracking-tight">Image Acquisition</CardTitle>
+                        <CardDescription>Upload dermoscopic source imagery.</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-10">
+                    <ImageUpload image={image} preview={preview} onImageSelect={(file, prev) => { setImage(file); setPreview(prev); }} onImageClear={() => { setImage(null); setPreview(null); }} />
+                  </CardContent>
+                </Card>
 
-        {/* ── Confirmation step ── */}
-        {step === "confirm" && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2
-                    className="w-5 h-5 text-brand-600"
-                    aria-hidden="true"
-                  />
-                  <CardTitle>Confirm Analysis Input</CardTitle>
-                </div>
-                <CardDescription>
-                  Review the image and clinical data before running multimodal
-                  analysis. Once submitted, the system will process the image
-                  through MedSigLIP, encode the clinical text via ClinicalBERT,
-                  and extract ABCD features.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* Image preview */}
-                {preview && (
-                  <div>
-                    <p className="text-xs font-semibold text-clinical-muted uppercase tracking-wider mb-2">
-                      Image
-                    </p>
-                    <div className="rounded-lg overflow-hidden border border-clinical-border bg-black/5 max-h-48">
-                      <img
-                        src={preview}
-                        alt="Uploaded dermoscopic image for analysis"
-                        className="w-full h-48 object-contain"
-                      />
+                <Card className="rounded-[2.5rem] border-border/40 bg-muted/5 shadow-none transition-all hover:bg-background hover:shadow-2xl lg:col-span-5">
+                  <CardHeader className="p-10 pb-0">
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-12 items-center justify-center rounded-2xl border border-border/50 bg-background text-foreground shadow-sm">
+                        <ClipboardText weight="duotone" className="size-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl tracking-tight">Metadata</CardTitle>
+                        <CardDescription>Enter patient clinical variables.</CardDescription>
+                      </div>
                     </div>
-                    <p className="text-xs text-clinical-muted mt-1">
-                      {image?.name} (
-                      {((image?.size || 0) / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  </div>
-                )}
+                  </CardHeader>
+                  <CardContent className="p-10">
+                    <ClinicalForm metadata={metadata} onChange={setMetadata} />
+                  </CardContent>
+                </Card>
 
-                {/* Patient demographics */}
-                <div>
-                  <p className="text-xs font-semibold text-clinical-muted uppercase tracking-wider mb-2">
-                    Patient Demographics
-                  </p>
-                  <div className="rounded-lg border border-clinical-border divide-y divide-clinical-border">
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">Age</span>
-                      <span className="text-sm font-semibold">
-                        {metadata.age} years
-                      </span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">Sex</span>
-                      <span className="text-sm font-semibold capitalize">
-                        {metadata.sex}
-                      </span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">
-                        Fitzpatrick
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {FITZPATRICK_LABELS[metadata.fitzpatrick] ||
-                          metadata.fitzpatrick}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lesion characteristics */}
-                <div>
-                  <p className="text-xs font-semibold text-clinical-muted uppercase tracking-wider mb-2">
-                    Lesion Characteristics
-                  </p>
-                  <div className="rounded-lg border border-clinical-border divide-y divide-clinical-border">
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">
-                        Location
-                      </span>
-                      <span className="text-sm font-semibold capitalize">
-                        {metadata.location}
-                      </span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">
-                        Diameter
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {metadata.diameter} mm
-                      </span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5">
-                      <span className="text-sm text-clinical-muted">
-                        Symptoms
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {activeSymptoms.length > 0
-                          ? activeSymptoms.join(", ")
-                          : "None reported"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setStep("input")}
-                    className="flex-1"
-                  >
-                    <Edit3 className="w-4 h-4 mr-2" aria-hidden="true" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="lg"
-                    onClick={handleSubmit}
-                    className="flex-1"
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
-                    Confirm & Run Analysis
+                <div className="lg:col-span-12">
+                  <Button size="lg" disabled={!isFormValid} onClick={() => setStep("confirm")} className="h-20 w-full rounded-full text-xl font-bold shadow-2xl transition-all hover:scale-[1.01] active:scale-95">
+                    Proceed to Verification
+                    <ArrowRight weight="bold" className="ml-3 size-6" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </motion.div>
+            )}
 
-        {/* ── Results step ── */}
-        {step === "results" && result && (
-          <ResultsDashboard
-            result={result}
-            imagePreview={preview}
-            metadata={metadata}
-          />
-        )}
+            {/* STEP: CONFIRM (Cinematic HUD) */}
+            {step === "confirm" && (
+              <motion.div 
+                key="confirm"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                className="mx-auto max-w-5xl"
+              >
+                <div className="relative overflow-hidden rounded-[3rem] border border-border/50 bg-background p-1 shadow-2xl ring-1 ring-white/10">
+                  <div className="grid grid-cols-1 md:grid-cols-5">
+                    <div className="bg-muted/20 p-12 md:col-span-2">
+                      <p className="mb-6 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Subject Profile</p>
+                      <div className="aspect-square overflow-hidden rounded-[2rem] border-4 border-background shadow-2xl">
+                        <img src={preview!} alt="Preview" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="mt-8 flex items-center gap-3">
+                        <div className="size-2 animate-pulse rounded-full bg-foreground" />
+                        <span className="font-mono text-xs font-bold uppercase text-foreground">Ready for Inference</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col justify-between p-12 md:col-span-3">
+                      <div className="grid grid-cols-2 gap-10">
+                        <div className="space-y-6">
+                          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Demographics</p>
+                          <DataPoint label="Age" value={`${metadata.age}y`} />
+                          <DataPoint label="Sex" value={metadata.sex} />
+                        </div>
+                        <div className="space-y-6">
+                          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Metrics</p>
+                          <DataPoint label="Diameter" value={`${metadata.diameter}mm`} />
+                          <DataPoint label="Location" value={metadata.location} />
+                        </div>
+                      </div>
+
+                      <div className="mt-12 flex flex-col gap-4">
+                        <Button onClick={handleSubmit} className="h-16 rounded-2xl text-lg font-bold">
+                          Run Multimodal Fusion
+                        </Button>
+                        <Button variant="ghost" onClick={() => setStep("input")} className="h-12 text-muted-foreground hover:text-foreground">
+                          <PencilLine className="mr-2" /> Modify Input
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP: RESULTS */}
+            {step === "results" && result && (
+              <motion.div 
+                key="results"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <ResultsDashboard result={result} imagePreview={preview} metadata={metadata} />
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </main>
+
+        {/* Footer Disclaimer */}
+        <footer className="mt-20 flex items-center justify-center gap-3 border-t border-border/40 pt-10 text-muted-foreground">
+          <Info weight="duotone" className="size-4" />
+          <p className="font-mono text-[10px] uppercase tracking-widest">Decision Support Only // Not for Primary Diagnosis</p>
+        </footer>
       </div>
+    </div>
+  );
+}
+
+function DataPoint({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="font-mono text-[10px] uppercase tracking-tighter text-muted-foreground">{label}</span>
+      <span className="text-xl font-bold capitalize text-foreground">{value}</span>
     </div>
   );
 }

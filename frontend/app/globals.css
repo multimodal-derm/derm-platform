@@ -1,121 +1,140 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+@layer base {
+  :root {
+    /* Shadcn Default Light Mode (Zinc) */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Shadcn Default Dark Mode (Zinc) */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
 
 @layer base {
   * {
-    @apply border-clinical-border;
+    @apply border-border;
   }
   body {
-    @apply bg-clinical-bg text-clinical-text antialiased;
+    @apply bg-background text-foreground antialiased;
   }
-  /* WCAG 2.2 AA: visible focus indicator on all interactive elements */
+  /* WCAG 2.2 AA: visible focus indicator */
   :focus-visible {
-    @apply outline-none ring-2 ring-offset-2 ring-[#FFDD00];
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
-  /* Skip to content link for keyboard users */
+  /* Skip to content link */
   .skip-to-content {
     @apply sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100]
-      focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg
-      focus:text-sm focus:font-semibold focus:text-brand-700;
+      focus:bg-background focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg
+      focus:text-sm focus:font-semibold focus:text-primary;
   }
 }
 
-/* ── Medical Loading Screen animations ── */
+/* ── Medical Loading Screen animations (Kept intact) ── */
 @keyframes scan-line {
-  0% {
-    transform: translateY(-100vh);
-    opacity: 0.6;
-  }
-  10% {
-    opacity: 0.6;
-  }
-  90% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateY(100vh);
-    opacity: 0;
-  }
+  0% { transform: translateY(-100vh); opacity: 0.6; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(100vh); opacity: 0; }
 }
 
 @keyframes blink-cursor {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
-.scan-line {
-  animation: scan-line 3s linear infinite;
-}
-
-.blink-cursor {
-  animation: blink-cursor 1s step-end infinite;
-}
+.scan-line { animation: scan-line 3s linear infinite; }
+.blink-cursor { animation: blink-cursor 1s step-end infinite; }
 
 .corner-bracket {
   position: absolute;
   width: 1.5rem;
   height: 1.5rem;
-  border-color: #00d4ff;
+  border-color: hsl(var(--primary));
   border-style: solid;
   opacity: 0.7;
 }
 
-.corner-bracket--tl {
-  top: 1rem;
-  left: 1rem;
-  border-width: 2px 0 0 2px;
-}
-
-.corner-bracket--tr {
-  top: 1rem;
-  right: 1rem;
-  border-width: 2px 2px 0 0;
-}
-
-.corner-bracket--bl {
-  bottom: 1rem;
-  left: 1rem;
-  border-width: 0 0 2px 2px;
-}
-
-.corner-bracket--br {
-  bottom: 1rem;
-  right: 1rem;
-  border-width: 0 2px 2px 0;
-}
+.corner-bracket--tl { top: 1rem; left: 1rem; border-width: 2px 0 0 2px; }
+.corner-bracket--tr { top: 1rem; right: 1rem; border-width: 2px 2px 0 0; }
+.corner-bracket--bl { bottom: 1rem; left: 1rem; border-width: 0 0 2px 2px; }
+.corner-bracket--br { bottom: 1rem; right: 1rem; border-width: 0 2px 2px 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-line {
-    animation: none;
-  }
-  .blink-cursor {
-    animation: none;
-  }
+  .scan-line { animation: none; }
+  .blink-cursor { animation: none; }
 }
 
+/* ── Legacy Component Classes mapped to Shadcn variables ── */
 @layer components {
   .clinical-card {
-    @apply rounded-xl border border-clinical-border bg-clinical-surface p-6 shadow-sm;
+    @apply rounded-xl border border-border bg-card text-card-foreground p-6 shadow-sm;
   }
+  
   .clinical-input {
-    @apply flex h-10 w-full rounded-lg border border-clinical-border bg-white px-3 py-2 text-sm
-      placeholder:text-clinical-muted
-      focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
-      transition-colors;
+    @apply flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm 
+      ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium 
+      placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 
+      focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors;
   }
+  
   .clinical-label {
-    @apply text-sm font-medium text-clinical-text mb-1.5 block;
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-1.5 block;
   }
+  
   .clinical-select {
-    @apply flex h-10 w-full rounded-lg border border-clinical-border bg-white px-3 py-2 text-sm
-      focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
-      transition-colors appearance-none cursor-pointer;
+    @apply flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm 
+      ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 
+      focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors appearance-none cursor-pointer;
   }
 }

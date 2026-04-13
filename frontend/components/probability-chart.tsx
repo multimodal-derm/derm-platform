@@ -2,7 +2,9 @@
 
 import { CLASS_LABELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+// Modern Phosphor Imports - No suffix
+import { TargetIcon, ChartBarHorizontalIcon } from "@phosphor-icons/react";
+import { motion } from "framer-motion";
 
 interface ProbabilityChartProps {
   probabilities: Record<string, number>;
@@ -18,11 +20,11 @@ export function ProbabilityChart({
 
   return (
     <div
-      className="space-y-3"
+      className="space-y-5 font-sans"
       role="list"
       aria-label="Class probability distribution"
     >
-      {sorted.map(([cls, prob]) => {
+      {sorted.map(([cls, prob], index) => {
         const isPredicted = cls === prediction;
         const pct = (prob * 100).toFixed(1);
         const barWidth = (prob / maxProb) * 100;
@@ -31,60 +33,80 @@ export function ProbabilityChart({
           <div
             key={cls}
             role="listitem"
+            className="group"
             aria-label={`${CLASS_LABELS[cls]}: ${pct}%${isPredicted ? " (predicted)" : ""}`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                {/* Icon marker for predicted class — not color-only */}
-                {isPredicted && (
-                  <Check
-                    className="w-4 h-4 text-brand-700 flex-shrink-0"
-                    aria-hidden="true"
-                  />
-                )}
-                <span
-                  className={cn(
-                    "text-sm font-mono font-medium",
-                    isPredicted ? "text-brand-700" : "text-clinical-muted",
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                {/* Visual Marker */}
+                <div className={cn(
+                  "flex size-6 items-center justify-center rounded-md border transition-colors",
+                  isPredicted 
+                    ? "bg-foreground text-background border-foreground shadow-sm" 
+                    : "bg-muted/50 text-muted-foreground border-border/50 group-hover:border-border"
+                )}>
+                  {isPredicted ? (
+                    <TargetIcon weight="bold" className="size-3.5" />
+                  ) : (
+                    <ChartBarHorizontalIcon weight="duotone" className="size-3" />
                   )}
-                >
-                  {cls}
-                </span>
-                <span className="text-xs text-clinical-muted hidden sm:inline">
-                  {CLASS_LABELS[cls]}
-                </span>
-                {isPredicted && (
-                  <span className="text-xs font-semibold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded">
-                    Predicted
+                </div>
+
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "font-mono text-xs font-bold tracking-tighter",
+                      isPredicted ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {cls}
+                    </span>
+                    {isPredicted && (
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] bg-foreground/5 px-1.5 py-0.5 rounded text-foreground border border-foreground/10">
+                        Primary Target
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground/60 leading-none mt-0.5">
+                    {CLASS_LABELS[cls]}
                   </span>
-                )}
+                </div>
               </div>
-              <span
-                className={cn(
-                  "text-sm font-mono font-semibold",
-                  isPredicted ? "text-brand-700" : "text-clinical-text",
-                )}
-              >
+
+              <span className={cn(
+                "font-mono text-sm font-bold tabular-nums",
+                isPredicted ? "text-foreground" : "text-muted-foreground"
+              )}>
                 {pct}%
               </span>
             </div>
+
+            {/* High-Contrast Technical Progress Bar */}
             <div
-              className="h-3 bg-gray-100 rounded-full overflow-hidden"
+              className="relative h-2 w-full overflow-hidden rounded-full bg-muted/30"
               role="progressbar"
               aria-valuenow={parseFloat(pct)}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${cls} probability: ${pct}%`}
             >
-              <div
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${barWidth}%` }}
+                transition={{ duration: 1, ease: "circOut", delay: index * 0.05 }}
                 className={cn(
-                  "h-full rounded-full transition-all duration-700 ease-out",
+                  "absolute inset-y-0 left-0 rounded-full transition-colors",
                   isPredicted
-                    ? "bg-gradient-to-r from-brand-500 to-brand-600"
-                    : "bg-gray-300",
+                    ? "bg-foreground shadow-[0_0_15px_rgba(var(--foreground),0.1)]"
+                    : "bg-muted-foreground/40"
                 )}
-                style={{ width: `${barWidth}%` }}
               />
+              {isPredicted && (
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-background/20 to-transparent"
+                />
+              )}
             </div>
           </div>
         );
