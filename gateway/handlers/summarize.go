@@ -20,7 +20,7 @@ func Summarize(ragURL string) http.HandlerFunc {
 		defer r.Body.Close()
 
 		// Forward JSON body to RAG service
-		client := &http.Client{Timeout: 120 * time.Second}
+		client := &http.Client{Timeout: 300 * time.Second}
 		req, err := http.NewRequest("POST", ragURL+"/summarize", bytes.NewReader(body))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create request", err.Error())

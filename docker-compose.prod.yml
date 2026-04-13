@@ -1,0 +1,66 @@
+services:
+  inference:
+    build: ./inference
+    ports:
+      - "8081:8081"
+    environment:
+      - CHECKPOINT_PATH=/app/model/best.pt
+      - DEVICE=cpu
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./model:/app/model:ro
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_PORT=8080
+      - INFERENCE_URL=http://inference:8081
+      - ALLOWED_ORIGINS=*
+      - MAX_UPLOAD_SIZE_MB=10
+      - RAG_URL=http://rag:8082
+    depends_on:
+      - inference
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://18.188.136.190:8080
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://18.188.136.190:8080
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  medgemma:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./model/medgemma:/models:ro
+    command: >
+      -m /models/medgemma-4b-it-Q4_K_M.gguf
+      -c 1024
+      --port 8083
+      --host 0.0.0.0
+      -np 1
+    restart: unless-stopped
+
+  rag:
+    build: ./rag
+    ports:
+      - "8082:8082"
+    environment:
+      - MEDGEMMA_URL=http://medgemma:8083
+      - EMBED_MODEL=medicalai/ClinicalBERT
+      - HF_TOKEN=${HF_TOKEN}
+    depends_on:
+      medgemma:
+        condition: service_started
+    restart: unless-stopped
