@@ -2,6 +2,9 @@ import { PredictionResponse, HealthResponse, ClinicalMetadata, SummaryResponse }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+export const CONFIDENCE_THRESHOLD = 0.35;
+export const ENTROPY_THRESHOLD = 2.5;
+
 class ApiError extends Error {
   constructor(
     public status: number,

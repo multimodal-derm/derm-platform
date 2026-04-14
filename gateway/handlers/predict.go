@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -21,9 +22,31 @@ var allowedMIME = map[string]bool{
 // Clinical metadata fields sent alongside the image.
 var requiredFields = []string{"age", "sex", "fitzpatrick", "location", "diameter"}
 
+// OOD thresholds — must match frontend constants
+const (
+	confidenceThreshold = 0.35
+	entropyThreshold    = 2.5
+)
+
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Details string `json:"details,omitempty"`
+}
+
+// Minimal struct to parse inference response for OOD check.
+type inferenceResponse struct {
+	Confidence    float64            `json:"confidence"`
+	Probabilities map[string]float64 `json:"probabilities"`
+}
+
+func computeEntropy(probs map[string]float64) float64 {
+	entropy := 0.0
+	for _, p := range probs {
+		if p > 0 {
+			entropy -= p * math.Log2(p)
+		}
+	}
+	return entropy
 }
 
 func Predict(inferenceURL string, maxUploadBytes int64) http.HandlerFunc {
@@ -83,6 +106,26 @@ func Predict(inferenceURL string, maxUploadBytes int64) http.HandlerFunc {
 			slog.Error("inference forward failed", "error", err)
 			writeError(w, http.StatusBadGateway, "inference service unavailable", err.Error())
 			return
+		}
+
+		// ── OOD check on successful response ──
+		if statusCode == http.StatusOK {
+			var result inferenceResponse
+			if err := json.Unmarshal(respBody, &result); err == nil {
+				entropy := computeEntropy(result.Probabilities)
+				if result.Confidence < confidenceThreshold || entropy > entropyThreshold {
+					slog.Warn("OOD image rejected",
+						"confidence", result.Confidence,
+						"entropy", entropy,
+					)
+					writeError(w, http.StatusUnprocessableEntity,
+						"Image does not appear to be a dermoscopic skin lesion. Please upload a close-up photo of a skin lesion.",
+						fmt.Sprintf("confidence=%.3f (threshold=%.2f), entropy=%.3f (threshold=%.2f)",
+							result.Confidence, confidenceThreshold, entropy, entropyThreshold),
+					)
+					return
+				}
+			}
 		}
 
 		slog.Info("prediction complete",
