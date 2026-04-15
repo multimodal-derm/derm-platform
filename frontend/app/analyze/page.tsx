@@ -17,16 +17,16 @@ const MedicalLoadingScreen = dynamic(
 
 // Corrected Phosphor Imports
 import { 
-  Microscope, 
-  SelectionPlus, 
-  Stethoscope, 
-  ChartBar, 
-  ArrowLeft, 
-  ArrowRight, 
-  PencilCircle,
-  WarningCircle,
-  Info,
-  Files
+  MicroscopeIcon, 
+  SelectionPlusIcon, 
+  StethoscopeIcon, 
+  ChartBarIcon, 
+  ArrowLeftIcon, 
+  ArrowRightIcon, 
+  PencilCircleIcon,
+  WarningCircleIcon,
+  InfoIcon,
+  FilesIcon
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
@@ -47,10 +47,10 @@ const DEFAULT_METADATA: ClinicalMetadata = {
 type Step = "input" | "confirm" | "loading" | "results";
 
 const STEPS = [
-  { key: "input", icon: Microscope, label: "Acquisition", detail: "Data Input" },
-  { key: "confirm", icon: SelectionPlus, label: "Verification", detail: "Review Stage" },
-  { key: "loading", icon: Stethoscope, label: "Inference", detail: "Processing" },
-  { key: "results", icon: ChartBar, label: "Diagnostic", detail: "Output" },
+  { key: "input", icon: MicroscopeIcon, label: "Acquisition", detail: "Data Input" },
+  { key: "confirm", icon: SelectionPlusIcon, label: "Verification", detail: "Review Stage" },
+  { key: "loading", icon: StethoscopeIcon, label: "Inference", detail: "Processing" },
+  { key: "results", icon: ChartBarIcon, label: "Diagnostic", detail: "Output" },
 ] as const;
 
 export default function AnalyzePage() {
@@ -171,7 +171,7 @@ export default function AnalyzePage() {
 
                 <div className="flex items-center justify-between rounded-[2.5rem] border border-border/40 bg-background p-4 pr-4">
                   <div className="flex items-center gap-4 pl-6 text-muted-foreground">
-                    <Info size={20} weight="duotone" />
+                    <InfoIcon size={20} weight="duotone" />
                     <span className="text-sm font-medium">All fields must be completed to initialize the MedSigLIP encoder.</span>
                   </div>
                   <Button 
@@ -181,7 +181,7 @@ export default function AnalyzePage() {
                     className="h-16 rounded-full px-12 text-lg font-bold shadow-xl transition-all hover:scale-[1.02]"
                   >
                     Initiate Engine
-                    <ArrowRight weight="bold" className="ml-3" />
+                    <ArrowRightIcon weight="bold" className="ml-3" />
                   </Button>
                 </div>
               </motion.div>
@@ -213,7 +213,7 @@ export default function AnalyzePage() {
                       <div>
                         <div className="flex items-center justify-between mb-10">
                            <h2 className="text-3xl font-bold tracking-tight">Technical Review</h2>
-                           <Files weight="duotone" className="size-8 text-muted-foreground/30" />
+                           <FilesIcon weight="duotone" className="size-8 text-muted-foreground/30" />
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-10">
@@ -229,7 +229,7 @@ export default function AnalyzePage() {
                           Confirm & Run Inference
                         </Button>
                         <Button variant="outline" onClick={() => setStep("input")} className="h-16 rounded-2xl border-border/50 px-8">
-                          <PencilCircle weight="duotone" className="size-6" />
+                          <PencilCircleIcon weight="duotone" className="size-6" />
                         </Button>
                       </div>
                     </div>
@@ -256,7 +256,7 @@ export default function AnalyzePage() {
       {error && (
         <div className="fixed bottom-10 right-10 z-[200] animate-in slide-in-from-right-10">
           <div className="flex items-center gap-4 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-destructive backdrop-blur-xl">
-            <WarningCircle weight="duotone" className="size-6" />
+            <WarningCircleIcon weight="duotone" className="size-6" />
             <p className="text-sm font-bold tracking-tight">{error}</p>
           </div>
         </div>
