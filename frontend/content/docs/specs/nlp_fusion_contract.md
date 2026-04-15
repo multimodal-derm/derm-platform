@@ -343,7 +343,6 @@ Fusion module. The text encoder was selected from a 10-model benchmark
 
 Ten models were evaluated on all 2,298 PAD-UFES-20 clinical notes. The winner
 was selected based on linear probe AUC, silhouette score, inference latency,
-and external benchmark performance (MedTEB).
 
 | Category             | Models                                              |
 |----------------------|-----------------------------------------------------|
@@ -351,10 +350,7 @@ and external benchmark performance (MedTEB).
 | General, contrastive | GTE-Base, BGE-Base, Qwen3-0.6B, Jina-v5-small      |
 | Medical, no contrast | ClinicalBERT, Bio-ClinicalBERT, BiomedBERT          |
 
-**Selected model:** ClinicalBERT (medicalai/ClinicalBERT) — fastest 768-dim model, 0.7410 macro F1 on PAD-UFES-20
-(0.578 avg across 51 medical tasks), 768-dim, contrastive-trained on GTE-base
-with 2M+ medical text pairs, ~76s inference for 2,298 samples. Pending final
-confirmation via downstream classification benchmark (#71).
+**Selected model:** ClinicalBERT (medicalai/ClinicalBERT) — fastest 768-dim model, 0.7410 macro F1 on PAD-UFES-20, 0.9557 ROC-AUC, 44.8s inference for 2,298 samples.
 
 **Selection rule:** Prefer the fastest 768-dim model unless a 1024-dim model
 shows strictly superior downstream classification performance. Qwen3-0.6B and

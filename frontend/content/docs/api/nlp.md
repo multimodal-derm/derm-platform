@@ -16,6 +16,8 @@ The NLP module converts structured PAD-UFES-20 patient metadata into clinical te
 
 Selected from a 10-model benchmark comparing medical and general-purpose encoders on PAD-UFES-20 clinical notes. ClinicalBERT was chosen as the fastest 768-dim model (44.8s inference) with 0.7410 macro F1 and 0.9557 ROC-AUC on PAD-UFES-20 6-class classification. No model statistically significantly outperformed it (Wilcoxon p>0.05).
 
+> **Methodological note:** The benchmark evaluates each encoder's best-performing classifier probe (ClinicalBERT → Random Forest, MedTE → Logistic Regression), meaning results reflect the embedding+classifier combination rather than pure embedding quality in isolation. ClinicalBERT's selection is robust — it outperformed MedTE across all five classifier types evaluated, not only with its best probe.
+
 See `docs/proposals/nlp_proposal.md` for the full benchmark table and selection rationale.
 
 ## Example
