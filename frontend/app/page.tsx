@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   BrainIcon,
@@ -144,6 +145,68 @@ const PipelineNode = ({
   </motion.div>
 );
 
+function BackendStatusBadge() {
+  const [status, setStatus] = useState<"checking" | "online" | "offline">(
+    "checking",
+  );
+
+  useEffect(() => {
+    const check = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/health`,
+          { signal: controller.signal },
+        );
+        setStatus("online");
+      } catch {
+        setStatus("offline");
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    check();
+  }, []);
+
+  const config = {
+    checking: {
+      dot: "bg-amber-500",
+      ping: "bg-amber-500",
+      label: "Checking Engine...",
+    },
+    online: {
+      dot: "bg-emerald-500",
+      ping: "bg-emerald-500",
+      label: "Multimodal Engine Live",
+    },
+    offline: {
+      dot: "bg-red-500",
+      ping: "bg-red-500",
+      label: "Demo Mode — Backend Offline",
+    },
+  }[status];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1, duration: 0.5 }}
+      className="inline-flex items-center gap-2.5 rounded-full border border-border/50 bg-background/80 px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest text-foreground shadow-sm"
+    >
+      <span className="relative flex size-2">
+        <span
+          className={`absolute inline-flex h-full w-full animate-ping rounded-full ${config.ping} opacity-40`}
+        />
+        <span className={`relative inline-flex size-2 rounded-full ${config.dot}`} />
+      </span>
+      {config.label}
+    </motion.div>
+  );
+}
+
 export default function HomePage() {
   return (
     <AppInitializer>
@@ -161,18 +224,7 @@ export default function HomePage() {
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
             className="z-10 mx-6 flex max-w-5xl flex-col items-center gap-8 rounded-[2.5rem] border border-border/40 bg-background/20 p-10 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl sm:p-20"
           >
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="inline-flex items-center gap-2.5 rounded-full border border-border/50 bg-background/80 px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest text-foreground shadow-sm"
-            >
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-40"></span>
-                <span className="relative inline-flex size-2 rounded-full bg-foreground"></span>
-              </span>
-              Multimodal Engine Live
-            </motion.div>
+            <BackendStatusBadge />
 
             <motion.h1
               initial={{ opacity: 0, y: 18 }}

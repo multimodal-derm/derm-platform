@@ -19,8 +19,9 @@ import {
   SparkleIcon,
   CircleNotchIcon,
   ArrowsClockwiseIcon,
-  FileTextIcon,
+  TerminalWindowIcon,
   CpuIcon,
+  FileTextIcon,
   WarningCircleIcon,
   CheckCircleIcon,
   EyeIcon,
@@ -163,12 +164,14 @@ export default function ResultsDashboard({
   result,
   imagePreview,
   metadata,
+  cachedSummary,
 }: {
   result: PredictionResponse;
   imagePreview: string | null;
   metadata: ClinicalMetadata;
+  cachedSummary?: string | null;
 }) {
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(cachedSummary ?? null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [showNarrative, setShowNarrative] = useState(false);
 
@@ -176,6 +179,7 @@ export default function ResultsDashboard({
   const { displayed: typedSummary, isTyping } = useTypewriter(summary);
 
   const fetchSummary = async () => {
+    if (cachedSummary) { setSummary(cachedSummary); return; }
     setSummaryLoading(true);
     setSummary(null);
     try {
@@ -188,7 +192,13 @@ export default function ResultsDashboard({
     }
   };
 
-  useEffect(() => { fetchSummary(); }, []);
+  useEffect(() => {
+    if (cachedSummary) {
+      setSummary(cachedSummary);
+    } else {
+      fetchSummary();
+    }
+  }, []);
 
   const riskBarColor =
     result.risk_level === "HIGH"     ? "bg-red-500" :
@@ -275,7 +285,7 @@ export default function ResultsDashboard({
             <div className="mb-8 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex size-9 items-center justify-center rounded-xl bg-background/10">
-                  <FileTextIcon weight="duotone" className="size-5 text-background" />
+                  <TerminalWindowIcon weight="duotone" className="size-5 text-background" />
                 </div>
                 <div className="flex flex-col">
                   <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-background">
