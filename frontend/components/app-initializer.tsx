@@ -3,39 +3,60 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { checkHealth } from "@/lib/api";
-// Modern Phosphor imports
-import { GlobeIcon, CpuIcon, FireIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { GlobeIcon, CpuIcon, FireIcon, CheckCircleIcon, WarningCircleIcon, WifiSlashIcon } from "@phosphor-icons/react";
 
 const MedicalLoadingScreen = dynamic(
   () => import("@/components/medical-loading-screen"),
   { ssr: false },
 );
 
-const MAX_WAIT_MS = 30_000;
+const MAX_WAIT_MS = 8_000;
 const POLL_INTERVAL_MS = 1_500;
-const MIN_DISPLAY_MS = 4_000;
+const MIN_DISPLAY_MS = 3_000;
 
-// Updated to the new rich stage structure
-const INIT_STAGES = [
-  { 
-    text: "Connecting to Gateway", 
-    detail: "Establishing Secure API Tunnel", 
-    icon: GlobeIcon 
+const ONLINE_STAGES = [
+  {
+    text: "Connecting to Gateway",
+    detail: "Establishing Secure API Tunnel",
+    icon: GlobeIcon,
   },
-  { 
-    text: "Loading Inference Engine", 
-    detail: "Allocating GPU Resources", 
-    icon: CpuIcon 
+  {
+    text: "Loading Inference Engine",
+    detail: "Allocating GPU Resources",
+    icon: CpuIcon,
   },
-  { 
-    text: "Warming Model Weights", 
-    detail: "Optimizing SigLIP & ClinicalBERT", 
-    icon: FireIcon 
+  {
+    text: "Warming Model Weights",
+    detail: "Optimizing SigLIP & ClinicalBERT",
+    icon: FireIcon,
   },
-  { 
-    text: "System Ready", 
-    detail: "All Nodes Operational", 
-    icon: CheckCircleIcon 
+  {
+    text: "System Ready",
+    detail: "All Nodes Operational",
+    icon: CheckCircleIcon,
+  },
+] as const;
+
+const OFFLINE_STAGES = [
+  {
+    text: "Connecting to Gateway",
+    detail: "Establishing Secure API Tunnel",
+    icon: GlobeIcon,
+  },
+  {
+    text: "Gateway Unreachable",
+    detail: "Backend Offline — Switching to Demo Mode",
+    icon: WifiSlashIcon,
+  },
+  {
+    text: "Loading Cached Predictions",
+    detail: "Real PAD-UFES-20 Validation Samples",
+    icon: WarningCircleIcon,
+  },
+  {
+    text: "Demo Mode Active",
+    detail: "Backend Offline — Live Inference Unavailable",
+    icon: WarningCircleIcon,
   },
 ] as const;
 
@@ -47,6 +68,7 @@ export default function AppInitializer({
   const [mounted, setMounted] = useState(false);
   const [backendReady, setBackendReady] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -67,17 +89,32 @@ export default function AppInitializer({
     const poll = async () => {
       while (!cancelled && Date.now() < deadline) {
         try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 4000);
           const health = await checkHealth();
+          clearTimeout(timeout);
           if (health.status === "healthy") {
-            if (!cancelled) setBackendReady(true);
+            if (!cancelled) {
+              setIsOffline(false);
+              setBackendReady(true);
+            }
             return;
           }
         } catch {
-          // backend not up yet
+          // Network error — backend offline
+          if (!cancelled) {
+            setIsOffline(true);
+            setBackendReady(true);
+          }
+          return;
         }
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
       }
-      if (!cancelled) setBackendReady(true);
+      // Timeout — treat as offline
+      if (!cancelled) {
+        setIsOffline(true);
+        setBackendReady(true);
+      }
     };
 
     poll();
@@ -88,12 +125,17 @@ export default function AppInitializer({
 
   const ready = mounted && backendReady && minTimePassed;
 
+  const stages = isOffline ? OFFLINE_STAGES : ONLINE_STAGES;
+  const title = isOffline
+    ? "DEMO MODE INITIALIZING"
+    : "INITIALIZING MULTIMODAL STACK";
+
   return (
     <>
       <MedicalLoadingScreen
         isVisible={!ready}
-        title="INITIALIZING MULTIMODAL STACK"
-        stages={INIT_STAGES}
+        title={title}
+        stages={stages}
       />
       {ready && (
         <div className="font-sans antialiased animate-in fade-in duration-700">
