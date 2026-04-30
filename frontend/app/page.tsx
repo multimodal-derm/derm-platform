@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   BrainIcon,
@@ -16,6 +15,7 @@ import {
 import { motion, type Variants } from "framer-motion";
 import AppInitializer from "@/components/app-initializer";
 import Hero3DScene from "@/components/hero-3d-scene";
+import { useBackendStatus } from "@/lib/backend-status";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -146,30 +146,7 @@ const PipelineNode = ({
 );
 
 function BackendStatusBadge() {
-  const [status, setStatus] = useState<"checking" | "online" | "offline">(
-    "checking",
-  );
-
-  useEffect(() => {
-    const check = async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      try {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/health`,
-          { signal: controller.signal },
-        );
-        setStatus("online");
-      } catch {
-        setStatus("offline");
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    check();
-  }, []);
+  const status = useBackendStatus();
 
   const config = {
     checking: {

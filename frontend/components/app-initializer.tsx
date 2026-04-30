@@ -2,62 +2,36 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { checkHealth } from "@/lib/api";
-import { GlobeIcon, CpuIcon, FireIcon, CheckCircleIcon, WarningCircleIcon, WifiSlashIcon } from "@phosphor-icons/react";
+import {
+  GlobeIcon,
+  CpuIcon,
+  FireIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  WifiSlashIcon,
+} from "@phosphor-icons/react";
+import { BackendStatusContext, type BackendStatus } from "@/lib/backend-status";
 
 const MedicalLoadingScreen = dynamic(
   () => import("@/components/medical-loading-screen"),
   { ssr: false },
 );
 
-const MAX_WAIT_MS = 8_000;
-const POLL_INTERVAL_MS = 1_500;
-const MIN_DISPLAY_MS = 3_000;
+const HEALTH_CHECK_TIMEOUT_MS = 2_500;
+const MIN_DISPLAY_MS = 1_500;
 
 const ONLINE_STAGES = [
-  {
-    text: "Connecting to Gateway",
-    detail: "Establishing Secure API Tunnel",
-    icon: GlobeIcon,
-  },
-  {
-    text: "Loading Inference Engine",
-    detail: "Allocating GPU Resources",
-    icon: CpuIcon,
-  },
-  {
-    text: "Warming Model Weights",
-    detail: "Optimizing SigLIP & ClinicalBERT",
-    icon: FireIcon,
-  },
-  {
-    text: "System Ready",
-    detail: "All Nodes Operational",
-    icon: CheckCircleIcon,
-  },
+  { text: "Connecting to Gateway", detail: "Establishing Secure API Tunnel", icon: GlobeIcon },
+  { text: "Loading Inference Engine", detail: "Allocating GPU Resources", icon: CpuIcon },
+  { text: "Warming Model Weights", detail: "Optimizing SigLIP & ClinicalBERT", icon: FireIcon },
+  { text: "System Ready", detail: "All Nodes Operational", icon: CheckCircleIcon },
 ] as const;
 
 const OFFLINE_STAGES = [
-  {
-    text: "Connecting to Gateway",
-    detail: "Establishing Secure API Tunnel",
-    icon: GlobeIcon,
-  },
-  {
-    text: "Gateway Unreachable",
-    detail: "Backend Offline — Switching to Demo Mode",
-    icon: WifiSlashIcon,
-  },
-  {
-    text: "Loading Cached Predictions",
-    detail: "Real PAD-UFES-20 Validation Samples",
-    icon: WarningCircleIcon,
-  },
-  {
-    text: "Demo Mode Active",
-    detail: "Backend Offline — Live Inference Unavailable",
-    icon: WarningCircleIcon,
-  },
+  { text: "Connecting to Gateway", detail: "Establishing Secure API Tunnel", icon: GlobeIcon },
+  { text: "Gateway Unreachable", detail: "Backend Offline — Switching to Demo Mode", icon: WifiSlashIcon },
+  { text: "Loading Cached Predictions", detail: "Real PAD-UFES-20 Validation Samples", icon: WarningCircleIcon },
+  { text: "Demo Mode Active", detail: "Backend Offline — Live Inference Unavailable", icon: WarningCircleIcon },
 ] as const;
 
 export default function AppInitializer({
@@ -68,7 +42,7 @@ export default function AppInitializer({
   const [mounted, setMounted] = useState(false);
   const [backendReady, setBackendReady] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
+  const [status, setStatus] = useState<BackendStatus>("checking");
 
   useEffect(() => {
     setMounted(true);
@@ -84,46 +58,42 @@ export default function AppInitializer({
     if (!mounted) return;
 
     let cancelled = false;
-    const deadline = Date.now() + MAX_WAIT_MS;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      HEALTH_CHECK_TIMEOUT_MS,
+    );
 
-    const poll = async () => {
-      while (!cancelled && Date.now() < deadline) {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 4000);
-          const health = await checkHealth();
-          clearTimeout(timeout);
-          if (health.status === "healthy") {
-            if (!cancelled) {
-              setIsOffline(false);
-              setBackendReady(true);
-            }
-            return;
-          }
-        } catch {
-          // Network error — backend offline
-          if (!cancelled) {
-            setIsOffline(true);
-            setBackendReady(true);
-          }
-          return;
-        }
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      }
-      // Timeout — treat as offline
-      if (!cancelled) {
-        setIsOffline(true);
+    const check = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/health`,
+          { signal: controller.signal },
+        );
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        setStatus(res.ok ? "online" : "offline");
         setBackendReady(true);
+      } catch {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          setStatus("offline");
+          setBackendReady(true);
+        }
       }
     };
 
-    poll();
+    check();
+
     return () => {
       cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
     };
   }, [mounted]);
 
   const ready = mounted && backendReady && minTimePassed;
+  const isOffline = status === "offline";
 
   const stages = isOffline ? OFFLINE_STAGES : ONLINE_STAGES;
   const title = isOffline
@@ -131,7 +101,7 @@ export default function AppInitializer({
     : "INITIALIZING MULTIMODAL STACK";
 
   return (
-    <>
+    <BackendStatusContext.Provider value={status}>
       <MedicalLoadingScreen
         isVisible={!ready}
         title={title}
@@ -142,6 +112,6 @@ export default function AppInitializer({
           {children}
         </div>
       )}
-    </>
+    </BackendStatusContext.Provider>
   );
 }
