@@ -1,11 +1,3 @@
-## ⚠️ Disclaimer
-
-**This project is for educational and research purposes only.** It is not a medical device, has not been validated for clinical use, and must not be used to diagnose, treat, or make decisions about any real medical condition. The model was trained on a single dataset (PAD-UFES-20, 2,298 images) and has known limitations — including a low SCC F1 score (0.43), limited fairness validation across Fitzpatrick skin types, and no cross-validation. Always consult a licensed dermatologist for any skin health concerns.
-
-
-Here's the full updated README with the disclaimer added right after the intro paragraph:
-
-markdown
 # derm-platform
 
 Production-grade web platform for multimodal skin cancer detection, powered by MedSigLIP vision encoding, ClinicalBERT text encoding, and MedGemma RAG-based clinical summaries.
