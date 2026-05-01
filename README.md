@@ -8,11 +8,24 @@ Production-grade web platform for multimodal skin cancer detection, powered by M
 
 ## Architecture
 
+```mermaid
+graph LR
+    Frontend[Frontend<br/>Next.js<br/>:3000] --> Gateway[Gateway<br/>Go<br/>:8080]
+    Gateway --> Inference[Inference<br/>FastAPI<br/>:8081]
+    Gateway --> RAG[RAG<br/>FastAPI<br/>:8082]
+    RAG --> MedGemma[MedGemma<br/>llama.cpp<br/>:8083]
+    RAG --> Chroma[ChromaDB<br/>ClinicalBERT embeddings]
 
-Frontend (Next.js) → Gateway (Go) → Inference (Python/FastAPI)
-                                   → RAG (Python/FastAPI) → MedGemma (llama.cpp)
-                                                           → ChromaDB (ClinicalBERT embeddings)
+    classDef frontend fill:#10b981,stroke:#047857,color:#fff
+    classDef gateway fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef python fill:#f59e0b,stroke:#b45309,color:#fff
+    classDef storage fill:#8b5cf6,stroke:#6d28d9,color:#fff
 
+    class Frontend frontend
+    class Gateway gateway
+    class Inference,RAG,MedGemma python
+    class Chroma storage
+```
 
 ## Services
 
@@ -35,7 +48,7 @@ Frontend (Next.js) → Gateway (Go) → Inference (Python/FastAPI)
 
 ### Setup
 
-bash
+```bash
 # 1. Clone
 git clone https://github.com/multimodal-derm/derm-platform.git
 cd derm-platform
@@ -51,7 +64,7 @@ hf download lmstudio-community/medgemma-4b-it-GGUF medgemma-4b-it-Q4_K_M.gguf --
 
 # 4. Start all services
 docker compose up --build
-
+```
 
 The app will be available at [http://localhost:3000](http://localhost:3000). First startup takes 2–3 minutes while models load.
 
@@ -66,60 +79,87 @@ The app will be available at [http://localhost:3000](http://localhost:3000). Fir
 
 ## Project Structure
 
+```mermaid
+graph LR
+    Root[derm-platform]
+    Root --> Compose[docker-compose.yml]
+    Root --> Env[.env.example]
+    Root --> Model[model/]
+    Root --> Gateway[gateway/]
+    Root --> Inference[inference/]
+    Root --> RAG[rag/]
+    Root --> Frontend[frontend/]
 
-derm-platform/
-├── docker-compose.yml
-├── .env.example
-├── model/
-│   ├── best.pt                              # Trained model checkpoint
-│   └── medgemma/
-│       └── medgemma-4b-it-Q4_K_M.gguf      # MedGemma GGUF weights
-├── gateway/                                  # Go API gateway
-│   ├── main.go
-│   ├── Dockerfile
-│   ├── handlers/
-│   │   ├── predict.go
-│   │   ├── summarize.go
-│   │   └── health.go
-│   ├── middleware/
-│   │   ├── cors.go
-│   │   └── logging.go
-│   └── config/
-│       └── config.go
-├── inference/                                # Python inference service
-│   ├── main.py
-│   ├── engine.py
-│   ├── model.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── rag/                                      # RAG clinical summary service
-│   ├── main.py
-│   ├── engine.py
-│   ├── knowledge.py
-│   ├── requirements.txt
-│   └── Dockerfile
-└── frontend/                                 # Next.js clinical UI
-    ├── app/
-    │   ├── page.tsx
-    │   └── analyze/page.tsx
-    ├── components/
-    │   ├── results-dashboard.tsx
-    │   ├── medical-loading-screen.tsx
-    │   └── app-initializer.tsx
-    └── lib/
-        ├── api.ts
-        ├── types.ts
-        └── use-three-scene.ts
+    Model --> BestPT[best.pt]
+    Model --> MedGemmaDir[medgemma/]
+    MedGemmaDir --> GGUF[medgemma-4b-it-Q4_K_M.gguf]
 
+    Gateway --> GMain[main.go]
+    Gateway --> GDocker[Dockerfile]
+    Gateway --> GHandlers[handlers/]
+    Gateway --> GMiddleware[middleware/]
+    Gateway --> GConfig[config/]
+    GHandlers --> GPredict[predict.go]
+    GHandlers --> GSummarize[summarize.go]
+    GHandlers --> GHealth[health.go]
+
+    Inference --> IMain[main.py]
+    Inference --> IEngine[engine.py]
+    Inference --> IModel[model.py]
+    Inference --> IDocker[Dockerfile]
+
+    RAG --> RMain[main.py]
+    RAG --> REngine[engine.py]
+    RAG --> RKnowledge[knowledge.py]
+    RAG --> RDocker[Dockerfile]
+
+    Frontend --> FApp[app/]
+    Frontend --> FComponents[components/]
+    Frontend --> FLib[lib/]
+    FApp --> FPage[page.tsx]
+    FApp --> FAnalyze[analyze/page.tsx]
+    FComponents --> FResults[results-dashboard.tsx]
+    FComponents --> FLoading[medical-loading-screen.tsx]
+    FComponents --> FInit[app-initializer.tsx]
+    FLib --> FApi[api.ts]
+    FLib --> FTypes[types.ts]
+    FLib --> FThree[use-three-scene.ts]
+
+    classDef root fill:#1f2937,stroke:#fff,stroke-width:2px,color:#fff
+    classDef service fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef file fill:#f3f4f6,stroke:#9ca3af,color:#111
+    classDef dir fill:#fef3c7,stroke:#d97706,color:#111
+
+    class Root root
+    class Gateway,Inference,RAG,Frontend service
+    class Model,MedGemmaDir,GHandlers,GMiddleware,GConfig,FApp,FComponents,FLib dir
+    class Compose,Env,BestPT,GGUF,GMain,GDocker,GPredict,GSummarize,GHealth,IMain,IEngine,IModel,IDocker,RMain,REngine,RKnowledge,RDocker,FPage,FAnalyze,FResults,FLoading,FInit,FApi,FTypes,FThree file
+```
 
 ## Model Pipeline
 
+```mermaid
+graph LR
+    Img[Dermoscopic Image] --> SigLIP[MedSigLIP<br/>1152-dim]
+    Txt[Patient Narrative] --> BERT[ClinicalBERT<br/>768-dim]
+    ABCD[ABCD Features<br/>14-dim] --> Fusion
 
-Image → MedSigLIP [1152-dim] ─┐
-                               ├→ Cross-Attention → Late Fusion [270] → MLP → 6 Classes
-Text  → ClinicalBERT [768-dim]┘                          ↑
-ABCD  → 14 handcrafted features ─────────────────────────┘
+    SigLIP --> Cross[Cross-Attention<br/>8 heads]
+    BERT --> Cross
+    Cross --> Fusion[Late Fusion<br/>270-dim]
+    Fusion --> MLP[MLP Head<br/>512 → 256 → 6]
+    MLP --> Out[6 Classes:<br/>ACK • BCC • MEL<br/>NEV • SCC • SEK]
 
+    classDef input fill:#10b981,stroke:#047857,color:#fff
+    classDef encoder fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef fusion fill:#f59e0b,stroke:#b45309,color:#fff
+    classDef output fill:#8b5cf6,stroke:#6d28d9,color:#fff
+
+    class Img,Txt,ABCD input
+    class SigLIP,BERT encoder
+    class Cross,Fusion,MLP fusion
+    class Out output
+```
 
 **6 classes:** ACK (Actinic Keratosis), BCC (Basal Cell Carcinoma), MEL (Melanoma), NEV (Nevus), SCC (Squamous Cell Carcinoma), SEK (Seborrheic Keratosis)
 
@@ -144,25 +184,43 @@ This project is released for educational and research use only. Not licensed for
 
 ## Team
 
-Northeastern University — CS5330 / CS6120 / ML Capstone
 
-
-A few thoughts on placement and tone:
-
-**Why right after the title.** Anyone scanning the repo (recruiters, fellow students, random GitHub visitors) sees it immediately. Burying it at the bottom defeats the purpose.
-
-**Why the warning emoji.** Visually unmissable. GitHub renders ⚠️ prominently in the README preview.
-
-**Why mention specific limitations** (SCC F1 = 0.43, no cross-validation, fairness caveats). These are exactly the things you flagged in your own report caveats. Stating them upfront in the README is intellectually honest and shows you understand the model's actual ceiling — which makes your project look *more* serious to recruiters and researchers, not less.
-
-**Added a small License section too.** Makes the educational-use scope explicit at the bottom in case someone misses the disclaimer at the top. Worth doing both.
-
-If you want it shorter, here's a one-paragraph version that skips the specific metrics:
-
-markdown
-## ⚠️ Disclaimer
-
-**This project is for educational and research purposes only.** It is not a medical device, has not been validated for clinical use, and must not be used to diagnose or treat any medical condition. Always consult a licensed dermatologist for skin health concerns.
-
-
-The longer version is better because it surfaces the limitations on the same screen — but either works. Your call.
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/akashshetty1997">
+        <img src="https://github.com/akashshetty1997.png" width="80" height="80" style="border-radius: 50%" /><br />
+        <sub><b>Akash Shetty</b></sub>
+      </a><br />
+      <sub>Team Lead • NLP • Platform</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Sourav-02121996">
+        <img src="https://github.com/Sourav-02121996.png" width="80" height="80" style="border-radius: 50%" /><br />
+        <sub><b>Sourav Das</b></sub>
+      </a><br />
+      <sub>Vision Encoder • Training • XAI</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/MSKANDHAN-MADHUSUDHANA">
+        <img src="https://github.com/MSKANDHAN-MADHUSUDHANA.png" width="80" height="80" style="border-radius: 50%" /><br />
+        <sub><b>Skandhan M</b></sub>
+      </a><br />
+      <sub>CV Pipeline • ABCD Features</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/jchacker5">
+        <img src="https://github.com/jchacker5.png" width="80" height="80" style="border-radius: 50%" /><br />
+        <sub><b>Joseph M Defendre</b></sub>
+      </a><br />
+      <sub>Metrics • Segmentation • Fairness</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/NithishBhat">
+        <img src="https://github.com/NithishBhat.png" width="80" height="80" style="border-radius: 50%" /><br />
+        <sub><b>Nithish Bhat</b></sub>
+      </a><br />
+      <sub>Fusion Module • Focal Loss</sub>
+    </td>
+  </tr>
+</table>
